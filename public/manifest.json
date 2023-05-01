@@ -1,20 +1,12 @@
 {
 	"name": "Salesforce Navigator for Lightning",
-	"version": "3.2.25",
+	"version": "4.0.1",
 	"manifest_version": 2,
-	"default_locale": "en",
+	"description": "Get more done in Salesforce - list and search records, make new ones, create a task or login as on the fly!",
 	"page_action": {
 		"default_icon": "images/sf-navigator32.png",
 		"default_popup": "popup.html",
 		"default_title": "Salesforce Navigator for Lightning"
-	},
-	"background": {
-		"scripts": [
-			"scripts/shared.js",
-			"scripts/pluralize.js",
-			"scripts/background.js"
-		],
-		"persistent": true
 	},
 	"icons": {
 		"16": "images/sf-navigator16.png",
@@ -26,7 +18,14 @@
 		"images/ajax-loader.gif",
 		"images/sf-navigator128.png"
 	],
-	"description": "Get more done in Salesforce - list and search records, make new ones, create a task or login as on the fly!",
+	"background": {
+		"scripts": [
+			"shared.js",
+			"scripts/pluralize.js",
+			"background.js"
+		],
+		"persistent": true
+	},
 	"content_scripts": [{
 		"css": [ "styles/main.css" ],
 		"matches": [
@@ -36,11 +35,10 @@
 		],
 		"all_frames": true,
 		"js": [
-			"scripts/mousetrap.min.js",
+			"contentScript.js",
+			"shared.js",
 			"scripts/pluralize.js",
-			"scripts/shared.js",
-			"scripts/main.js",
-			"scripts/popup.js"
+			"popup.js"
 		],
 		"run_at": "document_end"
 	}],
@@ -79,10 +77,5 @@
 		"storage",
 		"clipboardRead",
 		"cookies"
-	],
-	"browser_specific_settings": {
-		"gecko": {
-			"id": "{8597d04c-8508-4782-b04e-3f675b36d740}"
-		}
-	}
+	]
 }

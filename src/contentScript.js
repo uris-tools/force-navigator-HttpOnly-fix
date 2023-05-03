@@ -46,6 +46,7 @@ forceNavigator.launchMergerAccounts = (otherId)=>forceNavigator.launchMerger(oth
 forceNavigator.launchMergerCases = (otherId)=>forceNavigator.launchMerger(otherId, "Case")
 forceNavigator.createTask = (subject)=>{
 	ui.showLoadingIndicator()
+console.log('-------',subject)
 	if(["",null,undefined].includes(subject) && !forceNavigator.userId) { console.error("Empty Task subject"); hideLoadingIndicator(); return }
 	chrome.runtime.sendMessage({
 			"action":'createTask', "apiUrl": forceNavigator.apiUrl,
@@ -54,18 +55,18 @@ forceNavigator.createTask = (subject)=>{
 			"subject": subject, "userId": forceNavigator.userId
 		}, response=>{
 			if(response.errors.length != 0) { console.error("Error creating task", response.errors); return }
-			clearOutput()
+			ui.clearOutput()
 			forceNavigator.commands["commands.goToTask"] = {
 				"key": "commands.goToTask",
 				"url": forceNavigator.serverInstance + "/"+ response.id
 			}
-			forceNavigator.quickSearch.value = ""
+			ui.quickSearch.value = ""
 			ui.addSearchResult("commands.goToTask")
 			ui.addSearchResult("commands.escapeCommand")
 			let firstEl = document.querySelector('#sfnavOutputs :first-child')
-			if(listPosition == -1 && firstEl != null)
+			if(forceNavigator.listPosition == -1 && firstEl != null)
 				firstEl.className = "sfnav_child sfnav_selected"
-			hideLoadingIndicator()
+			ui.hideLoadingIndicator()
 	})
 }
 

@@ -178,14 +178,17 @@ export const ui = {
 	},
 	"kbdCommand": (e, keyPress)=>{
 		let cmdKey = ui.navOutput.childNodes[(forceNavigator.listPosition < 0 ? 0 : forceNavigator.listPosition)]?.dataset
+		let details = e.target
 		if(["?", "!"].includes(e.target.value[0]))
 			cmdKey = { "key": (e.target.value[0] == "?" ? "commands.search" : "commands.createTask") }
-		if(!cmdKey?.key?.startsWith("commands.loginAs.") && e.target.value.toLowerCase().includes(t("prefix.loginAs").toLowerCase()))
+		if(!cmdKey?.key?.startsWith("commands.loginAs.") && e.target.value.toLowerCase().includes(t("prefix.loginAs").toLowerCase())) {
 			cmdKey = "commands.loginAs"
+			details = ui.quickSearch.value
+		}
 		let newTab = forceNavigator.newTabKeys.indexOf(keyPress) >= 0 ? true : false
 		if(!newTab)
 			ui.clearOutput()
-		forceNavigator.invokeCommand(cmdKey, newTab, e.target)
+		forceNavigator.invokeCommand(cmdKey, newTab, details)
 	},
 	"selectMove": (direction)=>{
 		let words = Array.from(ui.navOutput.childNodes).reduce((a,w)=>a.concat([w.textContent]), [])
@@ -360,7 +363,7 @@ export const forceNavigator = {
 				forceNavigator.launchMergerAccounts(command.value)
 				break
 			case "commands.createTask":
-				forceNavigator.createTask(command?.key?.substring(1).trim())
+				forceNavigator.createTask(ui.quickSearch.value.substring(1).trim())
 				break
 			case "commands.search":
 				targetUrl = forceNavigator.searchTerms(ui.quickSearch.value.substring(1).trim())

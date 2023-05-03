@@ -179,8 +179,8 @@ export const ui = {
 	"kbdCommand": (e, keyPress)=>{
 		let cmdKey = ui.navOutput.childNodes[(forceNavigator.listPosition < 0 ? 0 : forceNavigator.listPosition)]?.dataset
 		if(["?", "!"].includes(e.target.value[0]))
-			cmdKey = e.target.value[0] == "?" ? "commands.search" : "commands.createTask"
-		if(!cmdKey?.key.startsWith("commands.loginAs.") && e.target.value.toLowerCase().includes(t("prefix.loginAs").toLowerCase()))
+			cmdKey = { "key": (e.target.value[0] == "?" ? "commands.search" : "commands.createTask") }
+		if(!cmdKey?.key?.startsWith("commands.loginAs.") && e.target.value.toLowerCase().includes(t("prefix.loginAs").toLowerCase()))
 			cmdKey = "commands.loginAs"
 		let newTab = forceNavigator.newTabKeys.indexOf(keyPress) >= 0 ? true : false
 		if(!newTab)
@@ -357,10 +357,10 @@ export const forceNavigator = {
 				forceNavigatorSettings.setTheme(command.value)
 				return true // probably not needed
 			case "commands.mergeAccounts":
-				launchMergerAccounts(command.value)
+				forceNavigator.launchMergerAccounts(command.value)
 				break
 			case "commands.createTask":
-				createTask(command.substring(1).trim())
+				forceNavigator.createTask(command?.key?.substring(1).trim())
 				break
 			case "commands.search":
 				targetUrl = forceNavigator.searchTerms(ui.quickSearch.value.substring(1).trim())

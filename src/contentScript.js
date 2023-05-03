@@ -1,7 +1,7 @@
-import { forceNavigator, forceNavigatorSettings } from "./shared"
+import { ui, forceNavigator, forceNavigatorSettings } from "./shared"
 import { t } from "lisan"
 
-const pasteFromClipboard = (newtab)=>{
+forceNavigator.pasteFromClipboard = (newtab)=>{
 	let cb = document.createElement("textarea")
 	let body = document.getElementsByTagName('body')[0]
 	body.appendChild(cb)
@@ -11,25 +11,27 @@ const pasteFromClipboard = (newtab)=>{
 	cb.remove()
 	return clipboardValue
 }
-const getIdFromUrl = ()=>{
+forceNavigator.getIdFromUrl = ()=>{
 	const url = document.location.href
 	const ID_RE = [
 		/http[s]?\:\/\/.*force\.com\/.*([a-zA-Z0-9]{18})[^\w]*/, // tries to find the first 18 digit
 		/http[s]?\:\/\/.*force\.com\/.*([a-zA-Z0-9]{15})[^\w]*/ // falls back to 15 digit
 	]
-	for(let i in ID_RE)
-		if (url.match(ID_RE[i]) != null) { return match[1] }
+	for(let i in ID_RE) {
+		const match = url.match(ID_RE[i])
+		if (match != null) { return match[1] }
+	}
 	return false
 }
-const launchMerger = (otherId, object)=>{
+forceNavigator.launchMerger = (otherId, object)=>{
 	if(!otherId)
-		otherId = pasteFromClipboard()
+		otherId = forceNavigator.pasteFromClipboard()
 	if(![15,18].includes(otherId.length)) {
-		forceNavigator.clearOutput()
-		forceNavigator.addSearchResult("commands.errorAccountMerge")
+		ui.clearOutput()
+		ui.addSearchResult("commands.errorAccountMerge")
 		return
 	}
-	const thisId = getIdFromUrl()
+	const thisId = forceNavigator.getIdFromUrl()
 	if(!thisId)
 		return
 	switch(object) {
@@ -40,9 +42,9 @@ const launchMerger = (otherId, object)=>{
 			break
 	}
 }
-const launchMergerAccounts = (otherId)=>launchMerger(otherId, "Account")
-const launchMergerCases = (otherId)=>launchMerger(otherId, "Case")
-const createTask = (subject)=>{
+forceNavigator.launchMergerAccounts = (otherId)=>forceNavigator.launchMerger(otherId, "Account")
+forceNavigator.launchMergerCases = (otherId)=>forceNavigator.launchMerger(otherId, "Case")
+forceNavigator.createTask = (subject)=>{
 	ui.showLoadingIndicator()
 	if(["",null,undefined].includes(subject) && !forceNavigator.userId) { console.error("Empty Task subject"); hideLoadingIndicator(); return }
 	chrome.runtime.sendMessage({

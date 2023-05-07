@@ -2,6 +2,7 @@ import { lisan, t } from "lisan"
 import Mousetrap from "mousetrap"
 lisan.add(require(`./languages/en-US.js`))
 
+export const _d = (i)=>{ i && console.debug(...(i[Symbol.iterator] ? i : [i])) }
 const inputHandler = (function(m) {
 	var _global_callbacks = {},
 		_original_stop_callback = m.stopCallback
@@ -26,6 +27,8 @@ export const ui = {
 	"quickSearch": null,
 	"navLoader": null,
 	"createBox": ()=>{
+		if(!document.body)
+			return false
 		let theme = forceNavigatorSettings.theme
 		let div = document.createElement("div")
 		div.setAttribute("id", "sfnavStyleBox")
@@ -64,8 +67,9 @@ export const ui = {
 	},
 	"mouseHandlerOut": (e)=>{ e.target.classList.remove('sfnav_selected'); return true },
 	"mouseClickLoginAs": (e)=>{ forceNavigator.loginAsPerform(e.target.dataset.key.replace("commands.loginAs.","")); return true },
-	// "mouseClickLoginAs": (e)=>{ forceNavigator.loginAsPerform(e.target.getAttribute("id")); return true },
 	"bindShortcuts": ()=>{
+		if(!ui.quickSearch)
+			return false
 		inputHandler.bindGlobal('esc', function(e) { ui.hideSearchBox() }) // global doesn't seem to be working
 		inputHandler(ui.quickSearch).bind('esc', function(e) { ui.hideSearchBox() })
 		inputHandler(ui.quickSearch).bind('enter', ui.kbdCommand)
@@ -202,7 +206,8 @@ export const ui = {
 			if (forceNavigator.listPosition >=0) {
 				ui.navOutput.childNodes[forceNavigator.listPosition + (direction == 'down' ? -1 : 1) ]?.classList.remove('sfnav_selected')
 				ui.navOutput.childNodes[forceNavigator.listPosition]?.classList.add('sfnav_selected')
-				ui.navOutput.childNodes[forceNavigator.listPosition]?.scrollIntoViewIfNeeded()
+				try { ui.navOutput.childNodes[forceNavigator.listPosition]?.scrollIntoViewIfNeeded() }
+				catch { ui.navOutput.childNodes[forceNavigator.listPosition]?.scrollIntoView() }
 				return false
 			}
 		}
@@ -227,6 +232,7 @@ export const forceNavigatorSettings = {
 		document.getElementById('sfnavStyleBox').classList = [newTheme]
 		forceNavigatorSettings.set("theme", newTheme)
 	},
+	"settingsOnly": ()=>JSON.parse(JSON.stringify(forceNavigatorSettings)),
 	"set": (key, value)=>{ let s={}; s[key]=value; chrome.storage.sync.set(s, response=>forceNavigator.refreshAndClear()) },
 	"loadSettings": ()=>{
 		chrome.storage.sync.get(forceNavigatorSettings, settings=>{
@@ -235,11 +241,15 @@ export const forceNavigatorSettings = {
 			if(forceNavigator.sessionId !== null) { return }
 			chrome.runtime.sendMessage({ "action": "getApiSessionId", "key": forceNavigator.organizationId }, response=>{
 				if(response && response.error) { console.error("response", orgId, response, chrome.runtime.lastError); return }
-				forceNavigator.sessionId = unescape(response.sessionId)
-				forceNavigator.userId = unescape(response.userId)
-				forceNavigator.apiUrl = unescape(response.apiUrl)
-				forceNavigator.loadCommands(settings)
-				ui.hideLoadingIndicator()
+				try {
+					forceNavigator.sessionId = unescape(response.sessionId)
+					forceNavigator.userId = unescape(response.userId)
+					forceNavigator.apiUrl = unescape(response.apiUrl)
+					forceNavigator.loadCommands(forceNavigatorSettings)
+					ui.hideLoadingIndicator()
+				} catch(e) {
+					_d([e, response])
+				}
 			})
 		})
 	}
@@ -271,7 +281,7 @@ export const forceNavigator = {
 	},{
 		"platform": "moz-extension",
 		"id": "jid1-DBcuAQpfLMcvOQ@jetpack",
-		"urlId": "e348e121-3b7c-4203-beaf-9f53cf606077",
+		"urlId": "84da8919-e6e9-4aae-ac9c-7f68b87003a1",
 		"name": "Salesforce Inspector",
 		"checkData": {"message": "getSfHost", "url": location.href},
 		"commands": [
@@ -283,7 +293,7 @@ export const forceNavigator = {
 		try {
 			document.onkeyup = (ev)=>{ window.ctrlKey = ev.ctrlKey }
 			document.onkeydown = (ev)=>{ window.ctrlKey = ev.ctrlKey }
-			forceNavigator.organizationId = document.cookie.match(/sid=([\w\d]+)/)[1]
+			forceNavigator.organizationId = document.cookie?.match(/sid=([\w\d]+)/)[1] || forceNavigator.organizationId
 			forceNavigator.sessionHash = forceNavigator.getSessionHash()
 			forceNavigatorSettings.loadSettings()
 			lisan.setLocaleName(forceNavigatorSettings.language)
@@ -295,7 +305,6 @@ export const forceNavigator = {
 			} else {
 				delete forceNavigator.commands["setup.enhancedProfiles"]
 			}
-
 		} catch(e) {
 			console.info('err',e)
 			if(forceNavigatorSettings.debug) console.error(e)
@@ -303,7 +312,7 @@ export const forceNavigator = {
 	},
 	"invokeCommand": (command, newTab, event)=>{
 		if(!command) { return false }
-		let targetUrl = ""
+		let targetUrl
 		if(typeof command != "object") command = {"key": command}
 		if(command.key.startsWith("commands.loginAs.")) {
 			forceNavigator.loginAsPerform(command.key.replace("commands.loginAs.",""), newTab)
@@ -312,6 +321,7 @@ export const forceNavigator = {
 		switch(command.key) {
 			case "commands.refreshMetadata":
 				forceNavigator.refreshAndClear()
+				return true
 				break
 			case "commands.objectManager":
 				targetUrl = forceNavigator.serverInstance + "/lightning/setup/ObjectManager/home"
@@ -384,18 +394,13 @@ export const forceNavigator = {
 				ui.addError(t("error.searchLimitMax"))
 		}
 		else if(typeof forceNavigator.commands[command.key] != 'undefined' && forceNavigator.commands[command.key].url) { targetUrl = forceNavigator.commands[command.key].url }
-		else if(forceNavigatorSettings.debug) {
-			console.log(t(command.key) + t("error.notFound"))
+		if(!targetUrl) {
+			console.error('No command match', command)
 			return false
 		}
-		if(targetUrl != "") {
-			ui.hideSearchBox()
-			forceNavigator.goToUrl(targetUrl, newTab, {command: command})
-			return true
-		} else {
-			console.debug('No command match', command)
-			return false
-		}
+		ui.hideSearchBox()
+		forceNavigator.goToUrl(targetUrl, newTab, {command: command})
+		return true
 	},
 	"resetCommands": ()=>{
 		const modeUrl = forceNavigatorSettings.lightningMode ? "lightning" : "classic"
@@ -423,10 +428,11 @@ export const forceNavigator = {
 		}})
 	},
 	"searchTerms": (terms)=>{
+		// TODO doesn't work from a searched page in Lightning, SF just won't reparse the update URL because reasons, looks like they hijack the navigate event
 		let searchUrl = forceNavigator.serverInstance
 		searchUrl += (!forceNavigatorSettings.lightningMode)
 		? "/_ui/search/ui/UnifiedSearchResults?sen=ka&sen=500&str=" + encodeURI(terms) + "#!/str=" + encodeURI(terms) + "&searchAll=true&initialViewMode=summary"
-		: "/one/one.app#" + btoa(JSON.stringify({
+		: "/one/one.app?forceReload#" + btoa(JSON.stringify({
 			"componentDef":"forceSearch:search",
 			"attributes":{
 				"term": terms,
@@ -460,9 +466,9 @@ export const forceNavigator = {
 	},
 	"getSessionHash": ()=>{
 		try {
-			let sId = document.cookie.match(forceNavigator.regMatchSid)[1]
+			let sId = document.cookie?.match(forceNavigator.regMatchSid)[1]
 			return sId.split('!')[0] + '!' + sId.substring(sId.length - 10, sId.length)
-		} catch(e) { if(debug) console.log(e) }
+		} catch(e) { _d([e]) }
 	},
 	"getHTTP": (getUrl, type = "json", headers = {}, data = {}, method = "GET") => {
 		let request = { method: method, headers: headers }
@@ -482,32 +488,29 @@ export const forceNavigator = {
 		})
 	},
 	"refreshAndClear": ()=>{
-		showLoadingIndicator()
+		ui.showLoadingIndicator()
 		forceNavigator.serverInstance = forceNavigator.getServerInstance(forceNavigator)
 		forceNavigator.loadCommands(forceNavigatorSettings, true)
 		document.getElementById("sfnavQuickSearch").value = ""
 	},
 	"loadCommands": (settings, force = false) => {
 		if([forceNavigator.serverInstance, forceNavigator.organizationId, forceNavigator.sessionId].includes(null))
-			return init()
+			return forceNavigator.init()
 		if(force || Object.keys(forceNavigator.commands).length === 0)
 			forceNavigator.resetCommands()
 		let options = {
-			sessionHash: forceNavigator.sessionHash,
-			domain: forceNavigator.serverInstance,
-			apiUrl: forceNavigator.apiUrl,
-			key: forceNavigator.sessionHash,
-			settings: forceNavigatorSettings,
-			force: force,
-			sessionId: forceNavigator.sessionId
+			"sessionHash": forceNavigator.sessionHash,
+			"domain": forceNavigator.serverInstance,
+			"apiUrl": forceNavigator.apiUrl,
+			"key": forceNavigator.organizationId,
+			"force": force,
+			"sessionId": forceNavigator.sessionId,
+			"action": "getMetadata"
 		}
-		// chrome.runtime.sendMessage( Object.assign(options, {action:'getSetupTree', settings: forceNavigatorSettings}), response=>{ Object.assign(forceNavigator.commands, response) })
-		chrome.runtime.sendMessage( Object.assign(options, {action:'getMetadata', settings: forceNavigatorSettings}), response=>Object.assign(forceNavigator.commands, response))
-		// chrome.runtime.sendMessage( Object.assign(options, {action:'getCustomObjects', settings: forceNavigatorSettings}), response=>{
-		// 	Object.assign(forceNavigator.commands, response)
-		// })
+		chrome.runtime.sendMessage(options, response=>Object.assign(forceNavigator.commands, response))
+		//TODO needs fixing
 		forceNavigator.otherExtensions.forEach(e=>chrome.runtime.sendMessage(
-			Object.assign(options, {action:'getOtherExtensionCommands', otherExtension: e}), response=>Object.assign(forceNavigator.commands, response)
+			Object.assign(options, { "action": "getOtherExtensionCommands", "otherExtension": e }), response=>Object.assign(forceNavigator.commands, response)
 		))
 		ui.hideLoadingIndicator()
 	},
@@ -515,7 +518,7 @@ export const forceNavigator = {
 		action: "goToUrl",
 		url: url,
 		newTab: newTab,
-		settings: Object.assign(forceNavigatorSettings, {
+		settings: Object.assign(forceNavigatorSettings.settingsOnly(), {
 				serverInstance: forceNavigator.serverInstance,
 				lightningMode: forceNavigatorSettings.lightningMode
 			})

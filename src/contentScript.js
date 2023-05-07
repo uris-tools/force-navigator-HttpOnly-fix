@@ -1,4 +1,4 @@
-import { ui, forceNavigator, forceNavigatorSettings } from "./shared"
+import { ui, forceNavigator, forceNavigatorSettings, _d } from "./shared"
 import { t } from "lisan"
 
 forceNavigator.pasteFromClipboard = (newtab)=>{

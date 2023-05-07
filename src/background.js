@@ -1,7 +1,6 @@
-import { forceNavigator, forceNavigatorSettings } from "./shared"
+import { forceNavigator, forceNavigatorSettings, _d } from "./shared"
 import { t } from "lisan"
 const metaData = {}
-
 const showElement = (element)=>{
 	chrome.tabs.query({currentWindow: true, active: true}, (tabs)=>{
 		switch(element) {
@@ -26,7 +25,7 @@ const getOtherExtensionCommands = (otherExtension, requestDetails, settings = {}
 	let commands = {}
 	if(chrome.management) {
 		chrome.management.get(otherExtension.id, response => {
-			if(chrome.runtime.lastError) { console.debug("Extension not found", chrome.runtime.lastError); return }
+			if(chrome.runtime.lastError) { _d("Extension not found", chrome.runtime.lastError); return }
 			otherExtension.commands.forEach(c=>{
 				forceNavigator.commands[otherExtension.name + ' > ' + c.label] = {
 					"url": otherExtension.platform + "://" + otherExtension.urlId + c.url.replace("$URL",url).replace("$APIURL",apiUrl),
@@ -45,8 +44,8 @@ const parseMetadata = (data, url, settings = {})=>{
 	let mapKeys = Object.keys(forceNavigator.objectSetupLabelsMap)
 	return data.sobjects.reduce((commands, { labelPlural, label, name, keyPrefix }) => {
 		if (!keyPrefix || skipObjects.includes(keyPrefix)) { return commands }
-		let baseUrl = "/";
-		if (forceNavigatorSettings.lightningMode && name.endsWith("__mdt")) { baseUrl += "lightning/setup/CustomMetadata/page?address=" }
+		let baseUrl = ""
+		if (forceNavigatorSettings.lightningMode && name.endsWith("__mdt")) { baseUrl += "/lightning/setup/CustomMetadata/page?address=" }
 		commands[keyPrefix + ".list"] = {
 			"key": keyPrefix + ".list",
 			"url": `${baseUrl}/${keyPrefix}`,
@@ -67,7 +66,7 @@ const parseMetadata = (data, url, settings = {})=>{
 				}
 			})
 		} else {
-			// figure out how to get the url for Classic
+			// TODO maybe figure out how to get the url for Classic
 			commands[t("prefix.setup") + label] = { "url": keyPrefix, "key": key}
 		}
 		return commands
@@ -85,9 +84,9 @@ const goToUrl = (targetUrl, newTab, settings = {})=>{
 		else
 			newUrl = targetUrl
 		if(newTab)
-			chrome.tabs.create({ active: false, url: newUrl })
+			chrome.tabs.create({ "active": false, "url": newUrl })
 		else
-			chrome.tabs.update(tabs[0].id, { url: newUrl })
+			chrome.tabs.update(tabs[0].id, { "url": newUrl })
 	})
 }
 
@@ -102,12 +101,14 @@ chrome.commands.onCommand.addListener((command)=>{
 chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
 	var orgKey = request.key !== null ? request.key?.split('!')[0] : request.key
 	switch(request.action) {
-		case "goToUrl": goToUrl(request.url, request.newTab, request.settings); break
+		case "goToUrl":
+			goToUrl(request.url, request.newTab, request.settings)
+			break
 		case "getOtherExtensionCommands":
 			getOtherExtensionCommands(request.otherExtension, request, request.settings, sendResponse)
 			break
 		case "getApiSessionId":
-			if (request.key === null) { sendResponse({error: "Must include orgId"}); return }
+			if (request.key === null) { sendResponse({ "error": "Must include orgId" }); return }
 			request.sid = request.uid = request.domain = ""
 			chrome.cookies.getAll({}, (all)=>{
 				all.forEach((c)=>{
@@ -128,15 +129,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
 				})
 			})
 			break
-		// case 'getSetupTree':
-		// 	if(setupTree[request.sessionHash] == null || request.force)
-		// 		forceNavigator.getHTTP("https://" + request.apiUrl + "/ui/setup/Setup", "document").then(response => {
-		// 			setupTree[request.sessionHash] = parseSetupTree(response, request.domain, request.settings)
-		// 			sendResponse(setupTree[request.sessionHash])
-		// 		})
-		// 	else
-		// 		sendResponse(setupTree[request.sessionHash])
-		// 	break
 		case 'getMetadata':
 			if(metaData[request.sessionHash] == null || request.force)
 				forceNavigator.getHTTP("https://" + request.apiUrl + '/services/data/' + forceNavigator.apiVersion + '/sobjects/', "json",
@@ -144,7 +136,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
 					.then(response => {
 						metaData[request.sessionHash] = parseMetadata(response, request.domain, request.settings)
 						sendResponse(metaData[request.sessionHash])
-					})
+					}).catch(e=>_d(e))
 			else
 				sendResponse(metaData[request.sessionHash])
 			break
@@ -155,7 +147,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
 			.then(function (response) { sendResponse(response) })
 			break
 		case 'searchLogins':
-			forceNavigator.getHTTP("https://" + request.apiUrl + "/services/data/" + forceNavigator.apiVersion + "/tooling/query/?q=SELECT+Id,+Name,+Username+FROM+User+WHERE+Name+LIKE+'%25" + request.searchValue + "%25'+OR+Username+LIKE+'%25" + request.searchValue + "%25'", "json", {"Authorization": "Bearer " + request.sessionId, "Content-Type": "application/json" })
+			forceNavigator.getHTTP("https://" + request.apiUrl + "/services/data/" + forceNavigator.apiVersion + "/query/?q=SELECT Id, Name, Username FROM User WHERE Name LIKE '%25" + request.searchValue.trim() + "%25' OR Username LIKE '%25" + request.searchValue.trim() + "%25'", "json", {"Authorization": "Bearer " + request.sessionId, "Content-Type": "application/json" })
 			.then(function(success) { sendResponse(success) }).catch(function(error) {
 				console.log(error)
 			})

@@ -238,6 +238,8 @@ export const forceNavigatorSettings = {
 		chrome.storage.sync.get(forceNavigatorSettings, settings=>{
 			for(const k in settings) { forceNavigatorSettings[k] = settings[k] }
 			forceNavigator.serverInstance = forceNavigator.getServerInstance(forceNavigatorSettings)
+			if(forceNavigatorSettings.theme)
+				document.getElementById('sfnavStyleBox').classList = [forceNavigatorSettings.theme]
 			if(forceNavigator.sessionId !== null) { return }
 			chrome.runtime.sendMessage({ "action": "getApiSessionId", "key": forceNavigator.organizationId }, response=>{
 				if(response && response.error) { console.error("response", orgId, response, chrome.runtime.lastError); return }
@@ -317,6 +319,9 @@ export const forceNavigator = {
 		if(command.key.startsWith("commands.loginAs.")) {
 			forceNavigator.loginAsPerform(command.key.replace("commands.loginAs.",""), newTab)
 			return true
+		} else if(command.key.startsWith("commands.themes")) {
+			forceNavigatorSettings.setTheme(command.key)
+			return true
 		}
 		switch(command.key) {
 			case "commands.refreshMetadata":
@@ -366,9 +371,6 @@ export const forceNavigator = {
 			case "commands.loginAs": 
 				forceNavigator.loginAs(command, newTab)
 				return true
-			case "commands.setTheme":
-				forceNavigatorSettings.setTheme(command.value)
-				return true // probably not needed
 			case "commands.mergeAccounts":
 				forceNavigator.launchMergerAccounts(command.value)
 				break
@@ -419,8 +421,7 @@ export const forceNavigator = {
 			"commands.dumpDebug",
 			"commands.setSearchLimit"
 		).forEach(c=>{forceNavigator.commands[c] = {"key": c}})
-		// TODO disabled themes for the moment
-		// forceNavigatorSettings.availableThemes.forEach(th=>forceNavigator.commands["commands.themes" + th] = { "key": "commands.themes" + th })
+		forceNavigatorSettings.availableThemes.forEach(th=>forceNavigator.commands["commands.themes" + th] = { "key": "commands.themes" + th })
 		Object.keys(forceNavigator.urlMap).forEach(c=>{forceNavigator.commands[c] = {
 			"key": c,
 			"url": forceNavigator.urlMap[c][modeUrl],

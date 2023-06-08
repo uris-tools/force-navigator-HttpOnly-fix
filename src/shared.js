@@ -874,7 +874,7 @@ export const forceNavigator = {
 			"classic": "/p/setup/custent/EntityLimits?type=Event&setupid=EventLimits&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity"
 		},
 		"setup.activityCustomFields": {
-			"lightning": "/lightning/setup/ObjectManager/Task/FieldsAndRelationships/view",
+			"lightning": "/lightning/setup/ObjectManager/Activity/FieldsAndRelationships/view",
 			"classic": "/p/setup/layout/LayoutFieldList?type=Activity&setupid=ActivityFields&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity"
 		},
 		"setup.publicCalendarsAndResources": {

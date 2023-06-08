@@ -1041,6 +1041,14 @@ export const forceNavigator = {
 			"lightning": "/lightning/setup/ChatterEmailSettings/home",
 			"classic": "/_ui/core/chatter/email/ui/ChatterEmailSettings/e?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCollaboration&setupid=ChatterEmailSettings"
 		},
+		"setup.inboundChangeSets": {
+			"lightning": "/lightning/setup/InboundChangeSet/home",
+			"classic": "/changemgmt/listInboundChangeSet.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDeploy&setupid=InboundChangeSet"
+		},
+		"setup.outboundChangeSets": {
+			"lightning": "/lightning/setup/OutboundChangeSet/home",
+			"classic": "/changemgmt/listOutboundChangeSet.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDeploy&setupid=OutboundChangeSet"
+		},
 		"setup.feedItemLayouts": {
 			"lightning": "/lightning/setup/FeedItemLayouts/home",
 			"classic": "/ui/setup/layout/PageLayouts?type=FeedItem&setupid=FeedItemLayouts&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DFeedItemActionConfig"

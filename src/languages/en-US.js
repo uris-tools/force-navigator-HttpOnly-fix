@@ -54,6 +54,8 @@ module.exports = {
 		"objects.validationRules": "Validation Rules",
 		"objects.details": "Details",
 		"setup.enhancedProfiles": "Enhanced Profiles",
+		"setup.inboundChangeSets": "Inbound Change Sets",
+		"setup.outboundChangeSets": "Outbound Change Sets",
 		"setup.manageUsers": "Manage Users",
 		"setup.home": "Home",
 		"setup.setup": "Setup",

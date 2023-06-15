@@ -27,10 +27,10 @@ const getOtherExtensionCommands = (otherExtension, requestDetails, settings = {}
 		chrome.management.get(otherExtension.id, response => {
 			if(chrome.runtime.lastError) { _d("Extension not found", chrome.runtime.lastError); return }
 			otherExtension.commands.forEach(c=>{
-				commands[otherExtension.name + ' > ' + c.label] = {
+				commands[c.key] = {
 					"url": otherExtension.platform + "://" + otherExtension.urlId + c.url.replace("$URL",url).replace("$APIURL",apiUrl),
-					"label": otherExtension.name + ' > ' + c.label,
-					"key": otherExtension.key
+					"label": t(c.key),
+					"key": c.key
 				}
 			})
 			sendResponse(commands)
@@ -166,7 +166,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
 		case 'searchLogins':
 			forceNavigator.getHTTP("https://" + request.apiUrl + "/services/data/" + forceNavigator.apiVersion + "/query/?q=SELECT Id, Name, Username FROM User WHERE Name LIKE '%25" + request.searchValue.trim() + "%25' OR Username LIKE '%25" + request.searchValue.trim() + "%25'", "json", {"Authorization": "Bearer " + request.sessionId, "Content-Type": "application/json" })
 			.then(function(success) { sendResponse(success) }).catch(function(error) {
-				console.log(error)
+				console.error(error)
 			})
 	}
 	return true

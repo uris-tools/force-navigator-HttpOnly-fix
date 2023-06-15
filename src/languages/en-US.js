@@ -238,6 +238,7 @@ module.exports = {
 		"setup.digitalExperienceTemplates": "Digital Experience > Templates",
 		"setup.digitalExperienceThemes": "Digital Experience > Themes",
 		"other.inspector.dataExport": "Salesforce Inspector > Data Export",
+		"other.inspector.showAllData": "Salesforce Inspector > Show All Data",
 		"setup.emailDeliverability": "Email > Deliverability",
 		"setup.emailInternationalization": "Email > Internationalization",
 		"setup.emailAttachments": "Email > Attachments",

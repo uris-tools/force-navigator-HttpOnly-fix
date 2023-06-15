@@ -278,7 +278,8 @@ export const forceNavigator = {
 		"name": "Salesforce Inspector",
 		"checkData": {"message": "getSfHost", "url": location.href},
 		"commands": [
-			{"label": "Data Export", "url": "/data-export.html?host=$APIURL", "key": "other.inspector.dataExport"}
+			{"url": "/data-export.html?host=$APIURL", "key": "other.inspector.dataExport"},
+			{"url": "/inspect.html?host=$APIURL&objectType=$SOBJECT&recordId=$RECORDID", "key": "other.inspector.showAllData"}
 		]
 	},{
 		"platform": "moz-extension",
@@ -287,7 +288,8 @@ export const forceNavigator = {
 		"name": "Salesforce Inspector",
 		"checkData": {"message": "getSfHost", "url": location.href},
 		"commands": [
-			{"label": "Data Export", "url": "/data-export.html?host=$APIURL", "key": "other.inspector.dataExport"}
+			{"url": "/data-export.html?host=$APIURL", "key": "other.inspector.dataExport"},
+			{"url": "/inspect.html?host=$APIURL&objectType=$SOBJECT&recordId=$RECORDID", "key": "other.inspector.showAllData"}
 		]
 	}],
 	"commands": {},
@@ -316,12 +318,23 @@ export const forceNavigator = {
 		if(!command) { return false }
 		let targetUrl
 		if(typeof command != "object") command = {"key": command}
+		if(typeof forceNavigator.commands[command.key] != 'undefined' && forceNavigator.commands[command.key].url) {
+			targetUrl = forceNavigator.commands[command.key].url
+		}
 		if(command.key.startsWith("commands.loginAs.")) {
 			forceNavigator.loginAsPerform(command.key.replace("commands.loginAs.",""), newTab)
 			return true
 		} else if(command.key.startsWith("commands.themes")) {
 			forceNavigatorSettings.setTheme(command.key)
 			return true
+		} else if(command.key.startsWith("other")) {
+			switch(command.key) {
+				case "other.inspector.showAllData":
+					const matching = location.href.match(/\/r\/([\w_]+)\/(\w+)/)
+					const sObject = matching[1]
+					const recordId = matching[2]
+					targetUrl = forceNavigator.commands[command.key].url.replace("$SOBJECT", sObject).replace("$RECORDID", recordId)
+			}
 		}
 		switch(command.key) {
 			case "commands.refreshMetadata":
@@ -379,6 +392,7 @@ export const forceNavigator = {
 				break
 			case "commands.search":
 				targetUrl = forceNavigator.searchTerms(ui.quickSearch.value.substring(1).trim())
+				break
 		}
 		if(command.key.replace(/\d+/,'').trim().split(' ').reduce((i,c) => {
 			if('set search limit'.includes(c))
@@ -395,7 +409,6 @@ export const forceNavigator = {
 			} else
 				ui.addError(t("error.searchLimitMax"))
 		}
-		else if(typeof forceNavigator.commands[command.key] != 'undefined' && forceNavigator.commands[command.key].url) { targetUrl = forceNavigator.commands[command.key].url }
 		if(!targetUrl) {
 			console.error('No command match', command)
 			return false

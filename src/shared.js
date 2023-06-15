@@ -509,9 +509,9 @@ export const forceNavigator = {
 			"action": "getMetadata"
 		}
 		chrome.runtime.sendMessage(options, response=>Object.assign(forceNavigator.commands, response))
-		//TODO needs fixing
-		forceNavigator.otherExtensions.forEach(e=>chrome.runtime.sendMessage(
-			Object.assign(options, { "action": "getOtherExtensionCommands", "otherExtension": e }), response=>Object.assign(forceNavigator.commands, response)
+		chrome.runtime.sendMessage(Object.assign(options, {"action": "getActiveFlows"}), response=>Object.assign(forceNavigator.commands, response))
+		forceNavigator.otherExtensions.filter(e=>{ return e.platform == (!!window.chrome ? "chrome-extension" : "moz-extension") }).forEach(e=>chrome.runtime.sendMessage(
+			Object.assign(options, { "action": "getOtherExtensionCommands", "otherExtension": e }), r=>{ return Object.assign(forceNavigator.commands, r) }
 		))
 		ui.hideLoadingIndicator()
 	},
@@ -1284,6 +1284,30 @@ export const forceNavigator = {
 		"setup.dataExport": {
 			"lightning": "/lightning/setup/DataManagementExport/home",
 			"classic": "chrome-extension://aodjmnfhjibkcdimpodiifdjnnncaafh/data-export.html?host=jstart.my.salesforce.com"
+		},
+		"setup.pausedFlows": {
+			"lightning": "/lightning/setup/Pausedflows/home",
+			"classic": ""
+		},
+		"setup.digitalExperienceAllSites": {
+			"lightning": "/lightning/setup/SetupNetworks/home",
+			"classic": "/_ui/networks/setup/SetupNetworksPage?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DNetworks&setupid=SetupNetworks"
+		},
+		"setup.digitalExperiencePages":{
+			"lightning": "/lightning/setup/CommunityFlexiPageList/home",
+			"classic": "/_ui/sites/setup/ui/CommunityFlexiPageFilterListPage?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DNetworks&setupid=CommunityFlexiPageList"
+		},
+		"setup.digitalExperienceSettings":{
+			"lightning": "/lightning/setup/NetworkSettings/home",
+			"classic": "/_ui/networks/setup/NetworkSettingsPage?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DNetworks&setupid=NetworkSettings"
+		},
+		"setup.digitalExperienceTemplates":{
+			"lightning": "/lightning/setup/CommunityTemplateDefinitionList/home",
+			"classic": "/_ui/sites/setup/ui/CommunityTemplateDefinitionFilterListPage?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DNetworks&setupid=CommunityTemplateDefinitionList"
+		},
+		"setup.digitalExperienceThemes":{
+			"lightning": "/lightning/setup/CommunityThemeDefinitionList/home",
+			"classic": "/_ui/sites/setup/ui/CommunityThemeDefinitionFilterListPage?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DNetworks&setupid=CommunityThemeDefinitionList"
 		}
 	}
 }

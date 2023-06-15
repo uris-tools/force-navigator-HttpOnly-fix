@@ -27,7 +27,7 @@ const getOtherExtensionCommands = (otherExtension, requestDetails, settings = {}
 		chrome.management.get(otherExtension.id, response => {
 			if(chrome.runtime.lastError) { _d("Extension not found", chrome.runtime.lastError); return }
 			otherExtension.commands.forEach(c=>{
-				forceNavigator.commands[otherExtension.name + ' > ' + c.label] = {
+				commands[otherExtension.name + ' > ' + c.label] = {
 					"url": otherExtension.platform + "://" + otherExtension.urlId + c.url.replace("$URL",url).replace("$APIURL",apiUrl),
 					"label": otherExtension.name + ' > ' + c.label,
 					"key": otherExtension.key
@@ -129,11 +129,28 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
 				})
 			})
 			break
+		case 'getActiveFlows':
+			let flowCommands = {}
+			forceNavigator.getHTTP("https://" + request.apiUrl + '/services/data/' + forceNavigator.apiVersion + '/query/?q=select+ActiveVersionId,Label+from+FlowDefinitionView+where+IsActive=true', "json",
+				{"Authorization": "Bearer " + request.sessionId, "Accept": "application/json"})
+				.then(response => {
+					let targetUrl = request.domain + "/builder_platform_interaction/flowBuilder.app?flowId="
+					response.records.forEach(f=>{
+						flowCommands["flow." + f.ActiveVersionId] = {
+							"key": "flow." + f.ActiveVersionId,
+							"url": targetUrl + f.ActiveVersionId,
+							"label": [t("prefix.flows"), f.Label].join(" > ")
+						}
+					})
+					sendResponse(flowCommands)
+				}).catch(e=>_d(e))
+			break
 		case 'getMetadata':
 			if(metaData[request.sessionHash] == null || request.force)
 				forceNavigator.getHTTP("https://" + request.apiUrl + '/services/data/' + forceNavigator.apiVersion + '/sobjects/', "json",
 					{"Authorization": "Bearer " + request.sessionId, "Accept": "application/json"})
 					.then(response => {
+						// TODO good place to filter out unwanted objects
 						metaData[request.sessionHash] = parseMetadata(response, request.domain, request.settings)
 						sendResponse(metaData[request.sessionHash])
 					}).catch(e=>_d(e))

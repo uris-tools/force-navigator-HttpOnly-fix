@@ -46,7 +46,6 @@ forceNavigator.launchMergerAccounts = (otherId)=>forceNavigator.launchMerger(oth
 forceNavigator.launchMergerCases = (otherId)=>forceNavigator.launchMerger(otherId, "Case")
 forceNavigator.createTask = (subject)=>{
 	ui.showLoadingIndicator()
-console.log('-------',subject)
 	if(["",null,undefined].includes(subject) && !forceNavigator.userId) { console.error("Empty Task subject"); hideLoadingIndicator(); return }
 	chrome.runtime.sendMessage({
 			"action":'createTask', "apiUrl": forceNavigator.apiUrl,

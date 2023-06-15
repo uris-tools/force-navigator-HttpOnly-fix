@@ -39,6 +39,7 @@ module.exports = {
 		"prefix.setup": "Setup",
 		"prefix.loginAs": "Login As",
 		"prefix.error": "Error!",
+		"prefix.flows": "Active Flows",
 		"objects.fieldsAndRelationships": "Fields",
 		"objects.pageLayouts": "Page Layouts",
 		"objects.lightningPages": "Lightning Record Pages",
@@ -230,6 +231,12 @@ module.exports = {
 		"setup.apexFlexQueue": "Apex Flex Queue",
 		"setup.backgroundJobs": "Background Jobs",
 		"setup.dataExport": "Data Export",
-
+		"setup.pausedFlows": "Process Automation > Paused And Failed Flow Interviews",
+		"setup.digitalExperienceAllSites": "Digital Experience > All Sites",
+		"setup.digitalExperiencePages": "Digital Experience > Pages",
+		"setup.digitalExperienceSettings": "Digital Experience > Settings",
+		"setup.digitalExperienceTemplates": "Digital Experience > Templates",
+		"setup.digitalExperienceThemes": "Digital Experience > Themes",
+		"other.inspector.dataExport": "Salesforce Inspector > Data Export",
 	},
 }

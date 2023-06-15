@@ -1308,6 +1308,50 @@ export const forceNavigator = {
 		"setup.digitalExperienceThemes":{
 			"lightning": "/lightning/setup/CommunityThemeDefinitionList/home",
 			"classic": "/_ui/sites/setup/ui/CommunityThemeDefinitionFilterListPage?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DNetworks&setupid=CommunityThemeDefinitionList"
-		}
+		},
+		"setup.emailDeliverability": {
+			"lightning":"/lightning/setup/OrgEmailSettings/home",
+			"classic":""
+		},
+		"setup.emailInternationalization": {
+			"lightning":"/lightning/setup/InternationalEmailAddresses/home",
+			"classic":""
+		},
+		"setup.emailAttachments": {
+			"lightning":"/lightning/setup/EmailAttachmentSettings/home",
+			"classic":""
+		},
+		"setup.emailDisclaimers": {
+			"lightning":"/lightning/setup/EmailDisclaimers/home",
+			"classic":""
+		},
+		"setup.emailGMail": {
+			"lightning":"/lightning/setup/LightningForGmailAndSyncSettings/home",
+			"classic":""
+		},
+		"setup.emailClassicTemplates": {
+			"lightning":"/lightning/setup/CommunicationTemplatesEmail/home",
+			"classic":""
+		},
+		"setup.emailClassicLetterheads": {
+			"lightning":"/lightning/setup/CommunicationTemplatesLetterheads/home",
+			"classic":""
+		},
+		"setup.emailFilterEmailTracking": {
+			"lightning":"/lightning/setup/FilterEmailTracking/home",
+			"classic":""
+		},
+		"setup.emailOutlookSync": {
+			"lightning":"/lightning/setup/LightningForOutlookAndSyncSettings/home",
+			"classic":""
+		},
+		"setup.emailExternalService": {
+			"lightning":"/lightning/setup/EmailTransportServiceSetupPage/home",
+			"classic":""
+		},
+		"setup.emailTestDeliverability": {
+			"lightning":"/lightning/setup/TestEmailDeliverability/home",
+			"classic":""
+		},
 	}
 }

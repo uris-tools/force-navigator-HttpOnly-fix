@@ -39,38 +39,9 @@ const getOtherExtensionCommands = (otherExtension, requestDetails, settings = {}
 }
 
 const parseMetadata = (data, url, settings = {})=>{
-	const skipObjects = ["0DM"]
 	if (data.length == 0 || typeof data.sobjects == "undefined") return false
 	let mapKeys = Object.keys(forceNavigator.objectSetupLabelsMap)
-	return data.sobjects.reduce((commands, { labelPlural, label, name, keyPrefix }) => {
-		if (!keyPrefix || skipObjects.includes(keyPrefix)) { return commands }
-		let baseUrl = ""
-		if (forceNavigatorSettings.lightningMode && name.endsWith("__mdt")) { baseUrl += "/lightning/setup/CustomMetadata/page?address=" }
-		commands[keyPrefix + ".list"] = {
-			"key": keyPrefix + ".list",
-			"url": `${baseUrl}/${keyPrefix}`,
-			"label": t("prefix.list") + " " + labelPlural
-		}
-		commands[keyPrefix + ".new"] = {
-			"key": keyPrefix + ".new",
-			"url": `${baseUrl}/${keyPrefix}/e`,
-			"label": t("prefix.new") + " " + label
-		}
-		if(forceNavigatorSettings.lightningMode) {
-			let targetUrl = url + "/lightning/setup/ObjectManager/" + name
-			mapKeys.forEach(key=>{
-				commands[keyPrefix + "." + key] = {
-					"key": keyPrefix + "." + key,
-					"url": targetUrl + forceNavigator.objectSetupLabelsMap[key],
-					"label": [t("prefix.setup"), label, t(key)].join(" > ")
-				}
-			})
-		} else {
-			// TODO maybe figure out how to get the url for Classic
-			commands[t("prefix.setup") + label] = { "url": keyPrefix, "key": key}
-		}
-		return commands
-	}, {})
+	return data.sobjects.reduce((commands, sObjectData) => forceNavigator.createSObjectCommands(commands, sObjectData), {})
 }
 
 const goToUrl = (targetUrl, newTab, settings = {})=>{
@@ -146,7 +117,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
 				}).catch(e=>_d(e))
 			break
 		case 'getMetadata':
-			if(metaData[request.sessionHash] == null || request.force)
+			if(forceNavigatorSettings.sessionIdDisabled) {
+				sendResponse(forceNavigator.standardObjects.reduce((commands, sObjectData)=>forceNavigator.createSObjectCommands(commands, sObjectData), {}))
+			}
+			else if(metaData[request.sessionHash] == null || request.force)
 				forceNavigator.getHTTP("https://" + request.apiUrl + '/services/data/' + forceNavigator.apiVersion + '/sobjects/', "json",
 					{"Authorization": "Bearer " + request.sessionId, "Accept": "application/json"})
 					.then(response => {

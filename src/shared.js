@@ -224,6 +224,8 @@ export const forceNavigatorSettings = {
 	"developername": false,
 	"lightningMode": true,
 	"language": "en-US",
+	"sessionIdDisabled": false,
+	"skipObjects": ["0DM"],
 	"availableThemes": ["Default", "Dark", "Unicorn", "Solarized"],
 	"ignoreList": null, // ignoreList will be for filtering custom objects, will need an add, remove, and list call
 	"changeDictionary": (newLanguage) => lisan.add(require("./languages/" + newLanguage + ".js")),
@@ -241,18 +243,23 @@ export const forceNavigatorSettings = {
 			if(forceNavigatorSettings.theme)
 				document.getElementById('sfnavStyleBox').classList = [forceNavigatorSettings.theme]
 			if(forceNavigator.sessionId !== null) { return }
-			chrome.runtime.sendMessage({ "action": "getApiSessionId", "key": forceNavigator.organizationId }, response=>{
-				if(response && response.error) { console.error("response", orgId, response, chrome.runtime.lastError); return }
-				try {
-					forceNavigator.sessionId = unescape(response.sessionId)
-					forceNavigator.userId = unescape(response.userId)
-					forceNavigator.apiUrl = unescape(response.apiUrl)
-					forceNavigator.loadCommands(forceNavigatorSettings)
-					ui.hideLoadingIndicator()
-				} catch(e) {
-					_d([e, response])
-				}
-			})
+			if(forceNavigatorSettings.sessionIdDisabled) {
+				forceNavigator.loadCommands(forceNavigatorSettings)
+				ui.hideLoadingIndicator()
+			} else {
+				chrome.runtime.sendMessage({ "action": "getApiSessionId", "key": forceNavigator.organizationId }, response=>{
+					if(response && response.error) { console.error("response", orgId, response, chrome.runtime.lastError); return }
+					try {
+						forceNavigator.sessionId = unescape(response.sessionId)
+						forceNavigator.userId = unescape(response.userId)
+						forceNavigator.apiUrl = unescape(response.apiUrl)
+						forceNavigator.loadCommands(forceNavigatorSettings)
+						ui.hideLoadingIndicator()
+					} catch(e) {
+						_d([e, response])
+					}
+				})
+			}
 		})
 	}
 }
@@ -263,6 +270,7 @@ export const forceNavigator = {
 	"sessionId": null,
 	"sessionHash": null,
 	"serverInstance": null,
+	"serverUrl": null,
 	"apiUrl": null,
 	"apiVersion": "v56.0",
 	"loaded": false,
@@ -297,8 +305,12 @@ export const forceNavigator = {
 		try {
 			document.onkeyup = (ev)=>{ window.ctrlKey = ev.ctrlKey }
 			document.onkeydown = (ev)=>{ window.ctrlKey = ev.ctrlKey }
-			forceNavigator.organizationId = document.cookie?.match(/sid=([\w\d]+)/)[1] || forceNavigator.organizationId
-			forceNavigator.sessionHash = forceNavigator.getSessionHash()
+			if(document.cookie.includes('CookieConsentPolicy') && !document.cookie.includes('; sid=')) {
+				forceNavigatorSettings.sessionIdDisabled = true
+			} else {
+				forceNavigator.organizationId = document.cookie?.match(/sid=([\w\d]+)/)[1] || forceNavigator.organizationId
+				forceNavigator.sessionHash = forceNavigator.getSessionHash()
+			}
 			forceNavigatorSettings.loadSettings()
 			lisan.setLocaleName(forceNavigatorSettings.language)
 			forceNavigator.resetCommands()
@@ -311,8 +323,38 @@ export const forceNavigator = {
 			}
 		} catch(e) {
 			console.info('err',e)
-			if(forceNavigatorSettings.debug) console.error(e)
 		}
+	},
+	"createSObjectCommands": (commands, sObjectData) => {
+		const { labelPlural, label, name, keyPrefix } = sObjectData
+		const mapKeys = Object.keys(forceNavigator.objectSetupLabelsMap)
+		if (!keyPrefix || forceNavigatorSettings.skipObjects.includes(keyPrefix)) { return commands }
+		let baseUrl = ""
+		if (forceNavigatorSettings.lightningMode && name.endsWith("__mdt")) { baseUrl += "/lightning/setup/CustomMetadata/page?address=" }
+		commands[keyPrefix + ".list"] = {
+			"key": keyPrefix + ".list",
+			"url": `${baseUrl}/${keyPrefix}`,
+			"label": t("prefix.list") + " " + labelPlural
+		}
+		commands[keyPrefix + ".new"] = {
+			"key": keyPrefix + ".new",
+			"url": `${baseUrl}/${keyPrefix}/e`,
+			"label": t("prefix.new") + " " + label
+		}
+		if(forceNavigatorSettings.lightningMode) {
+			let targetUrl = forceNavigator.serverUrl + "/lightning/setup/ObjectManager/" + name
+			mapKeys.forEach(key=>{
+				commands[keyPrefix + "." + key] = {
+					"key": keyPrefix + "." + key,
+					"url": targetUrl + forceNavigator.objectSetupLabelsMap[key],
+					"label": [t("prefix.setup"), label, t(key)].join(" > ")
+				}
+			})
+		} else {
+			// TODO maybe figure out how to get the url for Classic
+			commands[t("prefix.setup") + label] = { "url": keyPrefix, "key": key}
+		}
+		return commands
 	},
 	"invokeCommand": (command, newTab, event)=>{
 		if(!command) { return false }
@@ -426,20 +468,23 @@ export const forceNavigator = {
 			"commands.mergeAccounts",
 			"commands.toggleAllCheckboxes",
 			"commands.toggleLightning",
-			"commands.loginAs",
 			"commands.help",
 			"commands.objectManager",
-			"commands.toggleEnhancedProfiles",
-			"commands.refreshMetadata",
 			"commands.dumpDebug",
-			"commands.setSearchLimit"
-		).forEach(c=>{forceNavigator.commands[c] = {"key": c}})
+			"commands.setSearchLimit",
+			(forceNavigatorSettings.sessionIdDisabled ? null : "commands.loginAs"),
+			(forceNavigatorSettings.sessionIdDisabled ? null : "commands.toggleEnhancedProfiles"),
+			(forceNavigatorSettings.sessionIdDisabled ? null : "commands.refreshMetadata"),
+		).filter(i=>i).forEach(c=>{forceNavigator.commands[c] = {"key": c}})
 		forceNavigatorSettings.availableThemes.forEach(th=>forceNavigator.commands["commands.themes" + th] = { "key": "commands.themes" + th })
 		Object.keys(forceNavigator.urlMap).forEach(c=>{forceNavigator.commands[c] = {
 			"key": c,
 			"url": forceNavigator.urlMap[c][modeUrl],
 			"label": [t("prefix.setup"), t(c)].join(" > ")
 		}})
+		if(forceNavigatorSettings.sessionIdDisabled) {
+			forceNavigator.commands = forceNavigator.standardObjects.reduce((commands, sObjectData)=>forceNavigator.createSObjectCommands(commands, sObjectData), forceNavigator.commands)
+		}
 	},
 	"searchTerms": (terms)=>{
 		// TODO doesn't work from a searched page in Lightning, SF just won't reparse the update URL because reasons, looks like they hijack the navigate event
@@ -462,7 +507,7 @@ export const forceNavigator = {
 	"getServerInstance": (settings = {})=>{
 		let serverUrl
 		let url = location.origin + ""
-		if(settings.lightningMode) {// if(url.indexOf("lightning.force") != -1)
+		if(settings.lightningMode) {
 			serverUrl = url.replace('lightning.force.com','').replace('my.salesforce.com','') + "lightning.force.com"
 		} else {
 			if(url.includes("salesforce"))
@@ -476,6 +521,7 @@ export const forceNavigator = {
 				serverUrl = url.replace('lightning.force.com','') + "my.salesforce.com"
 			}
 		}
+		forceNavigator.serverUrl = serverUrl
 		return serverUrl
 	},
 	"getSessionHash": ()=>{
@@ -508,24 +554,27 @@ export const forceNavigator = {
 		document.getElementById("sfnavQuickSearch").value = ""
 	},
 	"loadCommands": (settings, force = false) => {
-		if([forceNavigator.serverInstance, forceNavigator.organizationId, forceNavigator.sessionId].includes(null))
+		if(!forceNavigator.serverInstance || (!forceNavigatorSettings.sessionIdDisabled && [forceNavigator.sessionId, forceNavigator.organizationId].includes(null))) {
 			return forceNavigator.init()
+		}
 		if(force || Object.keys(forceNavigator.commands).length === 0)
 			forceNavigator.resetCommands()
-		let options = {
-			"sessionHash": forceNavigator.sessionHash,
-			"domain": forceNavigator.serverInstance,
-			"apiUrl": forceNavigator.apiUrl,
-			"key": forceNavigator.organizationId,
-			"force": force,
-			"sessionId": forceNavigator.sessionId,
-			"action": "getMetadata"
+		if(!forceNavigatorSettings.sessionIdDisabled) {
+			let options = {
+				"sessionHash": forceNavigator.sessionHash,
+				"domain": forceNavigator.serverInstance,
+				"apiUrl": forceNavigator.apiUrl,
+				"key": forceNavigator.organizationId,
+				"force": force,
+				"sessionId": forceNavigator.sessionId,
+				"action": "getMetadata"
+			}
+			chrome.runtime.sendMessage(options, response=>Object.assign(forceNavigator.commands, response))
+			chrome.runtime.sendMessage(Object.assign(options, {"action": "getActiveFlows"}), response=>Object.assign(forceNavigator.commands, response))
+			forceNavigator.otherExtensions.filter(e=>{ return e.platform == (!!window.chrome ? "chrome-extension" : "moz-extension") }).forEach(e=>chrome.runtime.sendMessage(
+				Object.assign(options, { "action": "getOtherExtensionCommands", "otherExtension": e }), r=>{ return Object.assign(forceNavigator.commands, r) }
+			))
 		}
-		chrome.runtime.sendMessage(options, response=>Object.assign(forceNavigator.commands, response))
-		chrome.runtime.sendMessage(Object.assign(options, {"action": "getActiveFlows"}), response=>Object.assign(forceNavigator.commands, response))
-		forceNavigator.otherExtensions.filter(e=>{ return e.platform == (!!window.chrome ? "chrome-extension" : "moz-extension") }).forEach(e=>chrome.runtime.sendMessage(
-			Object.assign(options, { "action": "getOtherExtensionCommands", "otherExtension": e }), r=>{ return Object.assign(forceNavigator.commands, r) }
-		))
 		ui.hideLoadingIndicator()
 	},
 	"goToUrl": (url, newTab, settings)=>chrome.runtime.sendMessage({
@@ -594,6 +643,49 @@ export const forceNavigator = {
 		"objects.lightningPages": "/LightningPages/view",
 		"objects.validationRules": "/ValidationRules/view"
 	},
+	"standardObjects": [
+		{ "label": "Account", "name": "Account", "labelPlural": "Accounts", "keyPrefix": "001" },
+		{ "label": "Apex Class", "name": "ApexClass", "labelPlural": "Apex Classes", "keyPrefix": "01p" },
+		{ "label": "Apex Trigger", "name": "ApexTrigger", "labelPlural": "Apex Triggers", "keyPrefix": "01q" },
+		{ "label": "Asset Relationship", "name": "AssetRelationship", "labelPlural": "Asset Relationships", "keyPrefix": "1AR" },
+		{ "label": "Asset", "name": "Asset", "labelPlural": "Assets", "keyPrefix": "02i" },
+		{ "label": "Assignment Rule", "name": "AssignmentRule", "labelPlural": "Assignment Rules", "keyPrefix": "01Q" },
+		{ "label": "Attachment", "name": "Attachment", "labelPlural": "Attachments", "keyPrefix": "00P" },
+		{ "label": "Campaign", "name": "Campaign", "labelPlural": "Campaigns", "keyPrefix": "701" },
+		{ "label": "Case", "name": "Case", "labelPlural": "Cases", "keyPrefix": "500" },
+		{ "label": "Contact", "name": "Contact", "labelPlural": "Contacts", "keyPrefix": "003" },
+		{ "label": "Contract", "name": "Contract", "labelPlural": "Contracts", "keyPrefix": "800" },
+		{ "label": "Customer", "name": "Customer", "labelPlural": "Customers", "keyPrefix": "0o6" },
+		{ "label": "Dashboard", "name": "Dashboard", "labelPlural": "Dashboards", "keyPrefix": "01Z" },
+		{ "label": "Document", "name": "Document", "labelPlural": "Documents", "keyPrefix": "015" },
+		{ "label": "Duplicate Rule", "name": "DuplicateRule", "labelPlural": "Duplicate Rules", "keyPrefix": "0Bm" },
+		{ "label": "Email Message", "name": "EmailMessage", "labelPlural": "Email Messages", "keyPrefix": "02s" },
+		{ "label": "Email Template", "name": "EmailTemplate", "labelPlural": "Email Templates", "keyPrefix": "00X" },
+		{ "label": "Event", "name": "Event", "labelPlural": "Events", "keyPrefix": "00U" },
+		{ "label": "Idea", "name": "Idea", "labelPlural": "Ideas", "keyPrefix": "087" },
+		{ "label": "Individual", "name": "Individual", "labelPlural": "Individuals", "keyPrefix": "0PK" },
+		{ "label": "Note (Content)", "name": "ContentNote", "labelPlural": "Notes", "keyPrefix": "069" },
+		{ "label": "Note", "name": "Note", "labelPlural": "Notes", "keyPrefix": "002" },
+		{ "label": "Opportunity", "name": "Opportunity", "labelPlural": "Opportunities", "keyPrefix": "006" },
+		{ "label": "Order", "name": "Order", "labelPlural": "Orders", "keyPrefix": "801" },
+		{ "label": "Permission Set", "name": "PermissionSet", "labelPlural": "Permission Sets", "keyPrefix": "0PS" },
+		{ "label": "Lead", "name": "Lead", "labelPlural": "People", "keyPrefix": "00Q" },
+		{ "label": "Price Book", "name": "Pricebook2", "labelPlural": "Price Books", "keyPrefix": "01s" },
+		{ "label": "Product", "name": "Product2", "labelPlural": "Products", "keyPrefix": "01t" },
+		{ "label": "Profile", "name": "Profile", "labelPlural": "Profile", "keyPrefix": "00e" },
+		{ "label": "Prompt Version", "name": "PromptVersion", "labelPlural": "Prompt Versions", "keyPrefix": "0bt" },
+		{ "label": "Prompt", "name": "Prompt", "labelPlural": "Prompts", "keyPrefix": "0bs" },
+		{ "label": "Quote", "name": "Quote", "labelPlural": "Quotes", "keyPrefix": "0Q0" },
+		{ "label": "Report", "name": "Report", "labelPlural": "Reports", "keyPrefix": "00O" },
+		{ "label": "Social Persona", "name": "SocialPersona", "labelPlural": "Social Personas", "keyPrefix": "0SP" },
+		{ "label": "Solution", "name": "Solution", "labelPlural": "Solutions", "keyPrefix": "501" },
+		{ "label": "Static Resource", "name": "StaticResource", "labelPlural": "Static Resources", "keyPrefix": "081" },
+		{ "label": "Survey", "name": "Survey", "labelPlural": "Surveys", "keyPrefix": "0Kd" },
+		{ "label": "Task", "name": "Task", "labelPlural": "Tasks", "keyPrefix": "00T" },
+		{ "label": "Topic", "name": "Topic", "labelPlural": "Topics", "keyPrefix": "0TO" },
+		{ "label": "Visualforce Component", "name": "ApexComponent", "labelPlural": "Visualforce Components", "keyPrefix": "099" },
+		{ "label": "Visualforce Page", "name": "ApexPage", "labelPlural": "Visualforce Pages", "keyPrefix": "066" }
+	],
 	"urlMap": {
 		"setup.home": {
 			"lightning": "/lightning/page/home",

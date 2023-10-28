@@ -125,7 +125,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
 					{"Authorization": "Bearer " + request.sessionId, "Accept": "application/json"})
 					.then(response => {
 						// TODO good place to filter out unwanted objects
-						metaData[request.sessionHash] = parseMetadata(response, request.domain, request.settings)
+						metaData[request.sessionHash] = parseMetadata(response, request.domain, request.settings,request.serverUrl)
 						sendResponse(metaData[request.sessionHash])
 					}).catch(e=>_d(e))
 			else

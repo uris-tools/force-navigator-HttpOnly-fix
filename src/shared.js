@@ -325,7 +325,7 @@ export const forceNavigator = {
 			console.info('err',e)
 		}
 	},
-	"createSObjectCommands": (commands, sObjectData) => {
+	"createSObjectCommands": (commands, sObjectData, serverUrl) => {
 		const { labelPlural, label, name, keyPrefix } = sObjectData
 		const mapKeys = Object.keys(forceNavigator.objectSetupLabelsMap)
 		if (!keyPrefix || forceNavigatorSettings.skipObjects.includes(keyPrefix)) { return commands }
@@ -342,7 +342,7 @@ export const forceNavigator = {
 			"label": t("prefix.new") + " " + label
 		}
 		if(forceNavigatorSettings.lightningMode) {
-			let targetUrl = forceNavigator.serverUrl + "/lightning/setup/ObjectManager/" + name
+			let targetUrl = serverUrl + "/lightning/setup/ObjectManager/" + name
 			mapKeys.forEach(key=>{
 				commands[keyPrefix + "." + key] = {
 					"key": keyPrefix + "." + key,
@@ -567,6 +567,7 @@ export const forceNavigator = {
 				"key": forceNavigator.organizationId,
 				"force": force,
 				"sessionId": forceNavigator.sessionId,
+				"serverUrl" : forceNavigator.serverUrl,
 				"action": "getMetadata"
 			}
 			chrome.runtime.sendMessage(options, response=>Object.assign(forceNavigator.commands, response))

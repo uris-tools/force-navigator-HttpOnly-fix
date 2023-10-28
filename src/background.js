@@ -38,7 +38,7 @@ const getOtherExtensionCommands = (otherExtension, requestDetails, settings = {}
 	}
 }
 
-const parseMetadata = (data, url, settings, serverUrl = {})=>{
+const parseMetadata = (data, url, settings = {}, serverUrl)=>{
 	if (data.length == 0 || typeof data.sobjects == "undefined") return false
 	let mapKeys = Object.keys(forceNavigator.objectSetupLabelsMap)
 	return data.sobjects.reduce((commands, sObjectData) => forceNavigator.createSObjectCommands(commands, sObjectData, serverUrl), {})

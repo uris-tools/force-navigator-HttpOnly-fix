@@ -38,10 +38,10 @@ const getOtherExtensionCommands = (otherExtension, requestDetails, settings = {}
 	}
 }
 
-const parseMetadata = (data, url, settings = {})=>{
+const parseMetadata = (data, url, settings = {}, serverUrl)=>{
 	if (data.length == 0 || typeof data.sobjects == "undefined") return false
 	let mapKeys = Object.keys(forceNavigator.objectSetupLabelsMap)
-	return data.sobjects.reduce((commands, sObjectData) => forceNavigator.createSObjectCommands(commands, sObjectData), {})
+	return data.sobjects.reduce((commands, sObjectData) => forceNavigator.createSObjectCommands(commands, sObjectData, serverUrl), {})
 }
 
 const goToUrl = (targetUrl, newTab, settings = {})=>{
@@ -125,7 +125,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
 					{"Authorization": "Bearer " + request.sessionId, "Accept": "application/json"})
 					.then(response => {
 						// TODO good place to filter out unwanted objects
-						metaData[request.sessionHash] = parseMetadata(response, request.domain, request.settings)
+						metaData[request.sessionHash] = parseMetadata(response, request.domain, request.settings,request.serverUrl)
 						sendResponse(metaData[request.sessionHash])
 					}).catch(e=>_d(e))
 			else

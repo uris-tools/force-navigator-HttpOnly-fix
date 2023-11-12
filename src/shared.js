@@ -244,11 +244,16 @@ export const forceNavigatorSettings = {
 				document.getElementById('sfnavStyleBox').classList = [forceNavigatorSettings.theme]
 			if(forceNavigator.sessionId !== null) { return }
 			if(forceNavigatorSettings.sessionIdDisabled) {
-				forceNavigator.loadCommands(forceNavigatorSettings)
+				const force = true
+				forceNavigator.loadCommands(forceNavigatorSettings, force)
 				ui.hideLoadingIndicator()
 			} else {
 				chrome.runtime.sendMessage({ "action": "getApiSessionId", "key": forceNavigator.organizationId }, response=>{
-					if(response && response.error) { console.error("response", orgId, response, chrome.runtime.lastError); return }
+					if(response && response.error) {
+						forceNavigatorSettings.sessionIdDisabled = true
+						forceNavigatorSettings.loadSettings()
+						return
+					}
 					try {
 						forceNavigator.sessionId = unescape(response.sessionId)
 						forceNavigator.userId = unescape(response.userId)

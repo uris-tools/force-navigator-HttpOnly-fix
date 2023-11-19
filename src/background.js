@@ -54,6 +54,7 @@ const goToUrl = (targetUrl, newTab, settings = {})=>{
 			newUrl = tabs[0].url.match(/.*?\.com/)[0] + newUrl
 		else
 			newUrl = targetUrl
+		console.info("newUrl=" + newUrl)
 		if(newTab)
 			chrome.tabs.create({ "active": false, "url": newUrl })
 		else
@@ -70,8 +71,8 @@ chrome.commands.onCommand.addListener((command)=>{
 	}
 })
 chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
-	var orgKey = request.key !== null ? request.key?.split('!')[0] : request.key
-	console.info(request.action)
+	var apiUrl = request.serverUrl?.replace('lightning.force.com','my.salesforce.com')
+	console.info(apiUrl + " : " + request.action)
 	switch(request.action) {
 		case "goToUrl":
 			goToUrl(request.url, request.newTab, request.settings)
@@ -80,11 +81,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
 			getOtherExtensionCommands(request.otherExtension, request, request.settings, sendResponse)
 			break
 		case "getApiSessionId":
-			var apiUrl = request.serverUrl.replace('lightning.force.com','my.salesforce.com')
 			request.sid = request.uid = request.domain = request.oid = ""
 			chrome.cookies.getAll({}, (all)=>{
 				all.forEach((c)=>{
 					//if (c.name="sid" && c.value.includes("!")) {console.log("cookie: " +c.domain + '   ' + c.value)}
+					//if (c.domain.includes("cognyte--uri.")) {console.log("cookie: " +c.domain + ' ' +c.name+ '   ' + c.value)}
 					if(c.domain==request.serverUrl && c.name === "sid") {
 						request.sid = c.value
 						request.domain = c.domain
@@ -111,7 +112,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
 								request.uid = response.identity.match(/005.*/)[0]
 								sendResponse({sessionId: request.sid, userId: request.uid, orgId: request.oid, apiUrl: request.domain})
 							}
-							else sendResponse({error: "No user data found for " + request.key})
+							else sendResponse({error: "No user data found for " + request.oid})
 						})
 					}
 				)};

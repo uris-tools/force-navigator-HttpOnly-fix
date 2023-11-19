@@ -54,7 +54,6 @@ const goToUrl = (targetUrl, newTab, settings = {})=>{
 			newUrl = tabs[0].url.match(/.*?\.com/)[0] + newUrl
 		else
 			newUrl = targetUrl
-		console.info("newUrl=" + newUrl)
 		if(newTab)
 			chrome.tabs.create({ "active": false, "url": newUrl })
 		else

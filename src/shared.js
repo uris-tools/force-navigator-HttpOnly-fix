@@ -521,7 +521,6 @@ export const forceNavigator = {
 	"getSessionHash": ()=>{
 		try {
 			let sessionHash=document.cookie?.match(forceNavigator.regMatchSid_Client)[1]
-			console.info("sessionHash=" + sessionHash)
 			return sessionHash
 		} catch(e) { _d([e]) }
 	},

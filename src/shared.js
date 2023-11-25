@@ -224,7 +224,6 @@ export const forceNavigatorSettings = {
 	"developername": false,
 	"lightningMode": true,
 	"language": "en-US",
-	"sessionIdDisabled": false,
 	"skipObjects": ["0DM"],
 	"availableThemes": ["Default", "Dark", "Unicorn", "Solarized"],
 	"ignoreList": null, // ignoreList will be for filtering custom objects, will need an add, remove, and list call
@@ -243,28 +242,19 @@ export const forceNavigatorSettings = {
 			if(forceNavigatorSettings.theme)
 				document.getElementById('sfnavStyleBox').classList = [forceNavigatorSettings.theme]
 			if(forceNavigator.sessionId !== null) { return }
-			if(forceNavigatorSettings.sessionIdDisabled) {
-				const force = true
-				forceNavigator.loadCommands(forceNavigatorSettings, force)
+			chrome.runtime.sendMessage({ "action": "getApiSessionId", "serverUrl": forceNavigator.serverUrl }, response=>{
+				if(response && response.error) { console.error("response", response, chrome.runtime.lastError); return }
+				try {
+					forceNavigator.sessionId = unescape(response.sessionId)
+					forceNavigator.userId = unescape(response.userId)
+					forceNavigator.organizationId= unescape(response.orgId)
+					forceNavigator.apiUrl = unescape(response.apiUrl)
+					forceNavigator.loadCommands(forceNavigatorSettings)
+				} catch(e) {
+					_d([e, response])
+				}
 				ui.hideLoadingIndicator()
-			} else {
-				chrome.runtime.sendMessage({ "action": "getApiSessionId", "key": forceNavigator.organizationId }, response=>{
-					if(response && response.error) {
-						forceNavigatorSettings.sessionIdDisabled = true
-						forceNavigatorSettings.loadSettings()
-						return
-					}
-					try {
-						forceNavigator.sessionId = unescape(response.sessionId)
-						forceNavigator.userId = unescape(response.userId)
-						forceNavigator.apiUrl = unescape(response.apiUrl)
-						forceNavigator.loadCommands(forceNavigatorSettings)
-						ui.hideLoadingIndicator()
-					} catch(e) {
-						_d([e, response])
-					}
-				})
-			}
+			})
 		})
 	}
 }
@@ -283,7 +273,7 @@ export const forceNavigator = {
 	"ctrlKey": false,
 	"debug": false,
 	"newTabKeys": [ "ctrl+enter", "command+enter", "shift+enter" ],
-	"regMatchSid": /sid=([a-zA-Z0-9\.\!]+)/,
+	"regMatchSid_Client" : /sid_Client=([a-zA-Z0-9\.\!]+)/,
 	"otherExtensions": [{
 		"platform": "chrome-extension",
 		"id": "aodjmnfhjibkcdimpodiifdjnnncaafh",
@@ -310,12 +300,10 @@ export const forceNavigator = {
 		try {
 			document.onkeyup = (ev)=>{ window.ctrlKey = ev.ctrlKey }
 			document.onkeydown = (ev)=>{ window.ctrlKey = ev.ctrlKey }
-			if(document.cookie.includes('CookieConsentPolicy') && !document.cookie.includes('; sid=')) {
-				forceNavigatorSettings.sessionIdDisabled = true
-			} else {
-				forceNavigator.organizationId = document.cookie?.match(/sid=([\w\d]+)/)[1] || forceNavigator.organizationId
-				forceNavigator.sessionHash = forceNavigator.getSessionHash()
-			}
+
+			forceNavigator.serverInstance = forceNavigator.getServerInstance(forceNavigatorSettings)
+			forceNavigator.organizationId = forceNavigator.serverInstance || forceNavigator.organizationId
+			forceNavigator.sessionHash = forceNavigator.getSessionHash()
 			forceNavigatorSettings.loadSettings()
 			lisan.setLocaleName(forceNavigatorSettings.language)
 			forceNavigator.resetCommands()
@@ -409,9 +397,13 @@ export const forceNavigator = {
 			case "commands.dumpDebug":
 				console.info("session settings:", forceNavigatorSettings)
 				console.info("server instance: ", forceNavigator.serverInstance)
+				console.info("org ID: ", forceNavigator.organizationId)
 				console.info("API Url: ", forceNavigator.apiUrl)
-				console.info("Commands: ", forceNavigator.commands)
+				console.info("SessionHash: ", forceNavigator.sessionHash)
+				console.info("SessionID: ", forceNavigator.sessionId)
+				console.info("Commands: ",forceNavigator.commands)
 				ui.hideSearchBox()
+				return true
 				break
 			case "commands.toggleDeveloperName":
 			    forceNavigatorSettings.developername = !forceNavigatorSettings.developername
@@ -477,9 +469,9 @@ export const forceNavigator = {
 			"commands.objectManager",
 			"commands.dumpDebug",
 			"commands.setSearchLimit",
-			(forceNavigatorSettings.sessionIdDisabled ? null : "commands.loginAs"),
-			(forceNavigatorSettings.sessionIdDisabled ? null : "commands.toggleEnhancedProfiles"),
-			(forceNavigatorSettings.sessionIdDisabled ? null : "commands.refreshMetadata"),
+			"commands.loginAs",
+			"commands.toggleEnhancedProfiles",
+			"commands.refreshMetadata",
 		).filter(i=>i).forEach(c=>{forceNavigator.commands[c] = {"key": c}})
 		forceNavigatorSettings.availableThemes.forEach(th=>forceNavigator.commands["commands.themes" + th] = { "key": "commands.themes" + th })
 		Object.keys(forceNavigator.urlMap).forEach(c=>{forceNavigator.commands[c] = {
@@ -487,9 +479,6 @@ export const forceNavigator = {
 			"url": forceNavigator.urlMap[c][modeUrl],
 			"label": [t("prefix.setup"), t(c)].join(" > ")
 		}})
-		if(forceNavigatorSettings.sessionIdDisabled) {
-			forceNavigator.commands = forceNavigator.standardObjects.reduce((commands, sObjectData)=>forceNavigator.createSObjectCommands(commands, sObjectData), forceNavigator.commands)
-		}
 	},
 	"searchTerms": (terms)=>{
 		// TODO doesn't work from a searched page in Lightning, SF just won't reparse the update URL because reasons, looks like they hijack the navigate event
@@ -531,8 +520,8 @@ export const forceNavigator = {
 	},
 	"getSessionHash": ()=>{
 		try {
-			let sId = document.cookie?.match(forceNavigator.regMatchSid)[1]
-			return sId.split('!')[0] + '!' + sId.substring(sId.length - 10, sId.length)
+			let sessionHash=document.cookie?.match(forceNavigator.regMatchSid_Client)[1]
+			return sessionHash
 		} catch(e) { _d([e]) }
 	},
 	"getHTTP": (getUrl, type = "json", headers = {}, data = {}, method = "GET") => {
@@ -559,28 +548,27 @@ export const forceNavigator = {
 		document.getElementById("sfnavQuickSearch").value = ""
 	},
 	"loadCommands": (settings, force = false) => {
-		if(!forceNavigator.serverInstance || (!forceNavigatorSettings.sessionIdDisabled && [forceNavigator.sessionId, forceNavigator.organizationId].includes(null))) {
+
+		if([forceNavigator.serverInstance, forceNavigator.organizationId, forceNavigator.sessionId].includes(null)) {
 			return forceNavigator.init()
 		}
 		if(force || Object.keys(forceNavigator.commands).length === 0)
 			forceNavigator.resetCommands()
-		if(!forceNavigatorSettings.sessionIdDisabled) {
-			let options = {
-				"sessionHash": forceNavigator.sessionHash,
-				"domain": forceNavigator.serverInstance,
-				"apiUrl": forceNavigator.apiUrl,
-				"key": forceNavigator.organizationId,
-				"force": force,
-				"sessionId": forceNavigator.sessionId,
-				"serverUrl" : forceNavigator.serverUrl,
-				"action": "getMetadata"
-			}
-			chrome.runtime.sendMessage(options, response=>Object.assign(forceNavigator.commands, response))
-			chrome.runtime.sendMessage(Object.assign(options, {"action": "getActiveFlows"}), response=>Object.assign(forceNavigator.commands, response))
-			forceNavigator.otherExtensions.filter(e=>{ return e.platform == (!!window.chrome ? "chrome-extension" : "moz-extension") }).forEach(e=>chrome.runtime.sendMessage(
-				Object.assign(options, { "action": "getOtherExtensionCommands", "otherExtension": e }), r=>{ return Object.assign(forceNavigator.commands, r) }
-			))
+		let options = {
+			"sessionHash": forceNavigator.sessionHash,
+			"domain": forceNavigator.serverInstance,
+			"apiUrl": forceNavigator.apiUrl,
+			"key": forceNavigator.organizationId,
+			"force": force,
+			"sessionId": forceNavigator.sessionId,
+			"serverUrl" : forceNavigator.serverUrl,
+			"action": "getMetadata"
 		}
+		chrome.runtime.sendMessage(options, response=>Object.assign(forceNavigator.commands, response))
+		chrome.runtime.sendMessage(Object.assign(options, {"action": "getActiveFlows"}), response=>Object.assign(forceNavigator.commands, response))
+		forceNavigator.otherExtensions.filter(e=>{ return e.platform == (!!window.chrome ? "chrome-extension" : "moz-extension") }).forEach(e=>chrome.runtime.sendMessage(
+			Object.assign(options, { "action": "getOtherExtensionCommands", "otherExtension": e }), r=>{ return Object.assign(forceNavigator.commands, r) }
+		))
 		ui.hideLoadingIndicator()
 	},
 	"goToUrl": (url, newTab, settings)=>chrome.runtime.sendMessage({
@@ -599,8 +587,8 @@ export const forceNavigator = {
 			ui.showLoadingIndicator()
 			chrome.runtime.sendMessage({
 				action:'searchLogins', apiUrl: forceNavigator.apiUrl,
-				key: forceNavigator.sessionHash, sessionId: forceNavigator.sessionId,
-				domain: forceNavigator.serverInstance, sessionHash: forceNavigator.sessionHash,
+				sessionId: forceNavigator.sessionId,
+				domain: forceNavigator.serverInstance,
 				searchValue: searchValue, userId: forceNavigator.userId
 			}, success=>{
 				let numberOfUserRecords = success.records.length

@@ -49,8 +49,8 @@ forceNavigator.createTask = (subject)=>{
 	if(["",null,undefined].includes(subject) && !forceNavigator.userId) { console.error("Empty Task subject"); hideLoadingIndicator(); return }
 	chrome.runtime.sendMessage({
 			"action":'createTask', "apiUrl": forceNavigator.apiUrl,
-			"key": forceNavigator.sessionHash, "sessionId": forceNavigator.sessionId,
-			"domain": forceNavigator.serverInstance, "sessionHash": forceNavigator.sessionHash,
+			"sessionId": forceNavigator.sessionId,
+			"domain": forceNavigator.serverInstance,
 			"subject": subject, "userId": forceNavigator.userId
 		}, response=>{
 			if(response.errors.length != 0) { console.error("Error creating task", response.errors); return }

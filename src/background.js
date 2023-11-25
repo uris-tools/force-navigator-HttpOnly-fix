@@ -70,7 +70,8 @@ chrome.commands.onCommand.addListener((command)=>{
 	}
 })
 chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
-	var orgKey = request.key !== null ? request.key?.split('!')[0] : request.key
+	var apiUrl = request.serverUrl?.replace('lightning.force.com','my.salesforce.com')
+	console.info(apiUrl + " : " + request.action)
 	switch(request.action) {
 		case "goToUrl":
 			goToUrl(request.url, request.newTab, request.settings)
@@ -79,25 +80,42 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
 			getOtherExtensionCommands(request.otherExtension, request, request.settings, sendResponse)
 			break
 		case "getApiSessionId":
-			if (request.key === null) { sendResponse({ "error": "Must include orgId" }); return }
-			request.sid = request.uid = request.domain = ""
+			request.sid = request.uid = request.domain = request.oid = ""
 			chrome.cookies.getAll({}, (all)=>{
 				all.forEach((c)=>{
-					if(c.domain.includes("salesforce.com") && c.value.includes(request.key) && c.name === "sid") {
+					//if (c.name="sid" && c.value.includes("!")) {console.log("cookie: " +c.domain + '   ' + c.value)}
+					//if (c.domain.includes("cognyte--uri.")) {console.log("cookie: " +c.domain + ' ' +c.name+ '   ' + c.value)}
+					if(c.domain==request.serverUrl && c.name === "sid") {
 						request.sid = c.value
 						request.domain = c.domain
+						request.oid = request.sid.match(/([\w\d]+)/)[1]
 					}
 				})
-				if(request.sid === "") { sendResponse({error: "No session data found for " + request.key}); return }
-				forceNavigator.getHTTP("https://" + request.domain + '/services/data/' + forceNavigator.apiVersion, "json",
-					{"Authorization": "Bearer " + request.sid, "Accept": "application/json"}
-				).then(response => {
-					if(response?.identity) {
-						request.uid = response.identity.match(/005.*/)[0]
-						sendResponse({sessionId: request.sid, userId: request.uid, apiUrl: request.domain})
+				if(request.sid === "") {
+					//Alternative method to get the SID. see https://stackoverflow.com/a/34993849
+					chrome.cookies.get({url: apiUrl, name: "sid", storeId: sender.tab.cookieStoreId}, c => {
+						if (c) {
+							request.sid = c.value
+							request.domain = c.domain
+							request.oid = request.sid.match(/([\w\d]+)/)[1]
+						}
+						if(request.sid === "") {
+							console.log("No session data found for " + request.serverUrl)
+							sendResponse({error: "No session data found for " + request.serverUrl})
+							return 
+						}
+						forceNavigator.getHTTP( apiUrl + '/services/data/' + forceNavigator.apiVersion, "json",
+							{"Authorization": "Bearer " + request.sid, "Accept": "application/json"}
+						).then(response => {
+							if(response?.identity) {
+								request.uid = response.identity.match(/005.*/)[0]
+								sendResponse({sessionId: request.sid, userId: request.uid, orgId: request.oid, apiUrl: request.domain})
+							}
+							else sendResponse({error: "No user data found for " + request.oid})
+						})
 					}
-					else sendResponse({error: "No user data found for " + request.key})
-				})
+				)};
+		
 			})
 			break
 		case 'getActiveFlows':
@@ -117,10 +135,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
 				}).catch(e=>_d(e))
 			break
 		case 'getMetadata':
-			if(forceNavigatorSettings.sessionIdDisabled) {
-				sendResponse(forceNavigator.standardObjects.reduce((commands, sObjectData)=>forceNavigator.createSObjectCommands(commands, sObjectData), {}))
-			}
-			else if(metaData[request.sessionHash] == null || request.force)
+			if(metaData[request.sessionHash] == null || request.force)
 				forceNavigator.getHTTP("https://" + request.apiUrl + '/services/data/' + forceNavigator.apiVersion + '/sobjects/', "json",
 					{"Authorization": "Bearer " + request.sessionId, "Accept": "application/json"})
 					.then(response => {

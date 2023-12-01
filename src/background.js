@@ -1,4 +1,4 @@
-import { forceNavigator, forceNavigatorSettings, _d } from "./shared"
+import { forceNavigator, forceNavigatorSettings, sfObjectsGetData, _d } from "./shared"
 import { t } from "lisan"
 const metaData = {}
 const showElement = (element)=>{
@@ -19,6 +19,62 @@ const showElement = (element)=>{
 		}
 	})
 }
+
+
+// get details of an object (fields, page layouts, etc)
+// sourceCommand == forceNavigator.commands[command] object
+// options - hash passed from caller with context information
+// sendResponse - a callback from the main page
+//
+const getMoreData = (sourceCommand,options,sendResponse)=>{
+	let apiname = sourceCommand.apiname
+	let label = sourceCommand.label
+	let key = sourceCommand.key
+
+	console.debug("getmoredata>key = " + key +", Label = " + label + ",apiname = " +apiname)
+
+	//last element in the key indicates what to load
+	let commandArray = key.split('.')
+	let infoToGet = commandArray[commandArray.length-1]
+
+	if (sourceCommand.detailsAlreadyLoaded) {
+		sendResponse({ "info": "already loaded data for " + infoToGet })
+		return
+	}
+
+	//Find the relevant query for this object, based on sfObjectsGetData
+	console.info("Loading >" + infoToGet+ "< of obj >" +  apiname +"<",commandArray)
+	let baseurl="https://" + options.apiUrl + '/services/data/' + forceNavigator.apiVersion 
+	let url = ""
+	try {
+		if (typeof sfObjectsGetData[infoToGet] != "undefined") {
+			url = baseurl + sfObjectsGetData[infoToGet].getDataRequest(apiname)
+		} else {
+			console.error("field "+infoToGet+" not clear to me")
+			sendResponse({ "info": "can't expand field " + infoToGet})
+			return
+		}
+	} catch (e){
+		_d(e)
+	}
+		
+	//console.info(`>>  curl --ssl-no-revoke -H "Authorization: Bearer ${options.sessionId}" "${encodeURI(url)}"`)		
+	forceNavigator.getHTTP(url,"json", {"Authorization": "Bearer " + options.sessionId, "Accept": "application/json"})
+	.then(response => {
+		if(response && response.error) { console.error("response", response, chrome.runtime.lastError); return }
+		console.info("Resposne:`n", response)
+		let i = 0
+
+		//use the "processResponse" for this object type, to generate the list of commands
+		let objCommands= sfObjectsGetData[infoToGet].processResponse(apiname,label,response)
+
+		console.log("loaded " + (Object.keys(objCommands).length) + " records.")			
+		Object.assign(metaData[options.sessionHash], objCommands)
+		sendResponse(objCommands)
+	}).catch(e=>_d(e))
+	
+}
+
 const getOtherExtensionCommands = (otherExtension, requestDetails, settings = {}, sendResponse)=>{
 	const url = requestDetails.domain.replace(/https*:\/\//, '')
 	const apiUrl = requestDetails.apiUrl
@@ -71,7 +127,7 @@ chrome.commands.onCommand.addListener((command)=>{
 })
 chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
 	var apiUrl = request.serverUrl?.replace('lightning.force.com','my.salesforce.com')
-	console.info(apiUrl + " : " + request.action)
+	console.info(request.action + (apiUrl ? (" : " + apiUrl) : "" ) )
 	switch(request.action) {
 		case "goToUrl":
 			goToUrl(request.url, request.newTab, request.settings)
@@ -146,6 +202,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
 			else
 				sendResponse(metaData[request.sessionHash])
 			break
+		case 'getMoreData':
+			let sourceCommand = request.sourceCommand 
+			getMoreData(sourceCommand,request,sendResponse)
+
+			break
+
 		case 'createTask':
 			forceNavigator.getHTTP("https://" + request.apiUrl + "/services/data/" + forceNavigator.apiVersion + "/sobjects/Task",
 				"json", {"Authorization": "Bearer " + request.sessionId, "Content-Type": "application/json" },
@@ -157,6 +219,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
 			.then(function(success) { sendResponse(success) }).catch(function(error) {
 				console.error(error)
 			})
+		case 'help':
+			chrome.tabs.create({url: chrome.extension.getURL('popup.html')});
+			break
 	}
 	return true
 })

@@ -37,8 +37,8 @@ export const ui = {
 		const logoURL = chrome.extension.getURL("images/sf-navigator128.png")
 		div.innerHTML = `
 <div id="sfnavSearchBox">
-	<div class="sfnav_wrapper">
-		<input type="text" id="sfnavQuickSearch" autocomplete="off"/>
+	<div class="sfnav_wrapper">	
+		<input type="text" id="sfnavQuickSearch" autocomplete="off"/> 
 		<img id="sfnavLoader" src= "${loaderURL}"/>
 		<img id="sfnav_logo" src= "${logoURL}"/>
 	</div>
@@ -73,6 +73,7 @@ export const ui = {
 		inputHandler.bindGlobal('esc', function(e) { ui.hideSearchBox() }) // global doesn't seem to be working
 		inputHandler(ui.quickSearch).bind('esc', function(e) { ui.hideSearchBox() })
 		inputHandler(ui.quickSearch).bind('enter', ui.kbdCommand)
+		inputHandler(ui.quickSearch).bind('tab', ui.kbdCommand)
 		for (var i = 0; i < forceNavigator.newTabKeys.length; i++) {
 			inputHandler(ui.quickSearch).bind(forceNavigator.newTabKeys[i], ui.kbdCommand)
 		}
@@ -102,6 +103,7 @@ export const ui = {
 	},
 	"lookupCommands": ()=>{
 		const input = ui.quickSearch.value
+
 		ui.clearOutput()
 		if(input.substring(0,1) == "?") ui.addSearchResult("menu.globalSearch")
 		else if(input.substring(0,1) == "!") ui.addSearchResult("menu.createTask")
@@ -115,6 +117,8 @@ export const ui = {
 		}
 		let firstEl = ui.navOutput.querySelector(":first-child")
 		if(forceNavigator.listPosition == -1 && firstEl != null) firstEl.className = "sfnav_child sfnav_selected"
+
+		ui.debounceGetMoreData()	
 	},
 	"filterCommandList": (input)=>{
 		if(typeof input === 'undefined' || input == '') return []
@@ -129,7 +133,7 @@ export const ui = {
 				let match = 0
 				let sortValue = 0
 				for(let i=0;i<terms.length;i++) {
-					if(comboSearch.indexOf(terms[i]) != -1) {
+					if(comboSearch.indexOf(terms[i]) != -1) {	
 						match++
 						sortValue = 1
 					}
@@ -137,17 +141,28 @@ export const ui = {
 				for(let i=1;i<=terms.length;i++) {
 					if(comboSearch.indexOf(terms.slice(0,i).join(' ')) != -1)
 						sortValue++
-					else
-						break
+					else 
+						//Allow better sort if the user did not enter the ">". for example "Case Fields" should sort the same as "Case > Fields".  Without this, "case fields" would 
+						//bring "Setup > Briefcase Assignment > Fields"
+						if(comboSearch.indexOf(terms.slice(0,i).join(' > ')) != -1)
+							sortValue++
+						else
+							break
 				}
 				if (match == terms.length)
 					preSort[key] = sortValue
+			}
+			//Uri:  Take the weights into account when sorting, so less important items will appear lower.
+			//for example first will appear "Account > Fields > ...." and only after all the fields, will appear the "Account > Fields > ... > Field Level Security"			
+			const keySortValue = forceNavigator.commands[key]?.sortValue ?? 1
+			if(keySortValue!=1 && preSort[key]) {
+				preSort[key] = preSort[key]* keySortValue
 			}
 		}
 		return Object.keys(preSort).sort((a,b)=>(preSort[b] - preSort[a])).slice(0,forceNavigatorSettings.searchLimit)
 	},
 	"addSearchResult": (key)=>{
-		let r = document.createElement("a")
+				let r = document.createElement("a")
 		r.setAttribute("href", (forceNavigator.commands[key]?.url ?? "#").replace('//','/'))
 		r.setAttribute('data-key', key)
 		r.classList.add("sfnav_child")
@@ -164,7 +179,7 @@ export const ui = {
 		}
 		ui.navOutput.appendChild(r)
 	},
-	"addError": (text)=>{
+		"addError": (text)=>{
 		ui.clearOutput()
 		let err = document.createElement("div")
 		err.className = "sfnav_child sfnav-error-wrapper"
@@ -180,14 +195,24 @@ export const ui = {
 		ui.navOutput.innerHTML = ""
 		forceNavigator.listPosition = -1
 	},
-	"kbdCommand": (e, keyPress)=>{
+		"kbdCommand": (e, keyPress)=>{
+
+		if(keyPress == "tab") {
+			//Tab pressed.  
+			//try to get more info on the currently selected object			
+				ui.debounceGetMoreData(true)
+				return false
+		}
+
+		//Enter / ctrl-enter / shift-enter pressed
+		// translate the text entered to command from the dropdown , if exists:
+
 		let cmdKey = ui.navOutput.childNodes[(forceNavigator.listPosition < 0 ? 0 : forceNavigator.listPosition)]?.dataset
 		let details = e.target
 		if(["?", "!"].includes(e.target.value[0]))
 			cmdKey = { "key": (e.target.value[0] == "?" ? "commands.search" : "commands.createTask") }
 		if(!cmdKey?.key?.startsWith("commands.loginAs.") && e.target.value.toLowerCase().includes(t("prefix.loginAs").toLowerCase())) {
 			cmdKey = "commands.loginAs"
-			details = ui.quickSearch.value
 		}
 		let newTab = forceNavigator.newTabKeys.indexOf(keyPress) >= 0 ? true : false
 		if(!newTab)
@@ -195,14 +220,15 @@ export const ui = {
 		forceNavigator.invokeCommand(cmdKey, newTab, details)
 	},
 	"selectMove": (direction)=>{
+		ui.debounceGetMoreData()
 		let words = Array.from(ui.navOutput.childNodes).reduce((a,w)=>a.concat([w.textContent]), [])
 		let isLastPos = direction == 'down' 
 			? forceNavigator.listPosition < words.length-1 // is at the bottom
 			: forceNavigator.listPosition >= 0 // so direction = up, is at the top
 		if (words.length > 0 && isLastPos) {
+			forceNavigator.listPosition = forceNavigator.listPosition + (direction == 'down' ? 1 : -1)
 			if(forceNavigator.listPosition < 0)
 				forceNavigator.listPosition = 0
-			forceNavigator.listPosition = forceNavigator.listPosition + (direction == 'down' ? 1 : -1)
 			if (forceNavigator.listPosition >=0) {
 				ui.navOutput.childNodes[forceNavigator.listPosition + (direction == 'down' ? -1 : 1) ]?.classList.remove('sfnav_selected')
 				ui.navOutput.childNodes[forceNavigator.listPosition]?.classList.add('sfnav_selected')
@@ -210,6 +236,81 @@ export const ui = {
 				catch { ui.navOutput.childNodes[forceNavigator.listPosition]?.scrollIntoView() }
 				return false
 			}
+		}
+	},
+	"debounceTypingTimer" : null,	
+	"debounceGetMoreData":(tabPressed=false)=>{
+		//dealy before calling getMoreData, so it will be called only when the user stopped typing
+		clearTimeout(ui.debounceTypingTimer);
+		if (tabPressed) {
+			ui.getMoreData(tabPressed=true)
+		} else {
+			ui.debounceTypingTimer = setTimeout(ui.getMoreData, 1000);		
+		}
+	},
+	"getMoreData":(tabPressed=false)=>{
+		let keyToExpand=undefined
+
+		if (ui.navOutput.childNodes.length==0 && ui.quickSearch?.value?.length>0) {
+			//There in nothing in the lookup table, meaning there is no matching command.
+			//It could be that the user entered a value that is not yet loaded, for example "Case > Fields CaseNumber".  Remove the last element, and see if "Case > Fields" is something 
+			//I can expand:			
+			let reducedCommand = ui.quickSearch.value.split(' ')
+			reducedCommand.pop()
+			reducedCommand =  reducedCommand.join(' ')
+			//console.log("ui.getMoreData: No command selected: "+ ui.quickSearch.value+".  will try " + reducedCommand) 
+			let words = ui.filterCommandList(reducedCommand)
+			if(words.length > 0) {
+				keyToExpand = words[0]
+				//console.log("try " , forceNavigator.commands[keyToExpand]?.label )
+			} 
+		} else {
+			//The lookup table has some values.  take the selected/first one and try to get more data for it/
+			let cmdKey = ui.navOutput.childNodes[(forceNavigator.listPosition < 0 ? 0 : forceNavigator.listPosition)]?.dataset
+			keyToExpand = cmdKey?.key
+
+		}
+		
+		if (keyToExpand==undefined) return
+
+		if(typeof forceNavigator.commands[keyToExpand] != 'undefined') {
+
+			let options = {
+				"action": "getMoreData",
+				"sourceCommand" : forceNavigator.commands[keyToExpand],
+				"sessionHash": forceNavigator.sessionHash,
+				"domain": forceNavigator.serverInstance,
+				"serverUrl": forceNavigator.serverUrl,
+				"apiUrl": forceNavigator.apiUrl,
+				"key": forceNavigator.organizationId,
+				"sessionId": forceNavigator.sessionId,
+			}
+	
+			chrome.runtime.sendMessage(
+				options,
+				response=>{
+					if(response && response.info) { console.info("info expanding: " + response.info); return }
+					try {
+						if (response) {
+							Object.assign(forceNavigator.commands, response)
+							forceNavigator.commands[keyToExpand].detailsAlreadyLoaded = "Yes"
+						} else {
+							console.log("no response from getMoreData")
+						}
+						forceNavigator.listPosition = -1
+						
+						//update the quicksearch to have the new data appear, if the user pressed TAB. otherwise, just update the lookup values but don't change the text 
+						//the user entered
+						if (tabPressed) 
+							ui.quickSearch.value = forceNavigator.commands[keyToExpand].label + ' > '
+
+						ui.quickSearch.focus()
+						ui.lookupCommands()
+					} catch(e) {
+						_d([e, response])
+					}
+				}
+			)
 		}
 	}
 }
@@ -220,7 +321,7 @@ export const forceNavigatorSettings = {
 	"searchLimit": 16,
 	"commands": {},
 	"enhancedprofiles": true,
-	"debug": false,
+	"debug": true,
 	"developername": false,
 	"lightningMode": true,
 	"language": "en-US",
@@ -296,7 +397,7 @@ export const forceNavigator = {
 		]
 	}],
 	"commands": {},
-	"init": ()=>{
+		"init": ()=>{
 		try {
 			document.onkeyup = (ev)=>{ window.ctrlKey = ev.ctrlKey }
 			document.onkeydown = (ev)=>{ window.ctrlKey = ev.ctrlKey }
@@ -314,8 +415,9 @@ export const forceNavigator = {
 			} else {
 				delete forceNavigator.commands["setup.enhancedProfiles"]
 			}
-		} catch(e) {
+					} catch(e) {
 			console.info('err',e)
+			if(forceNavigatorSettings.debug) console.error(e)
 		}
 	},
 	"createSObjectCommands": (commands, sObjectData, serverUrl) => {
@@ -327,12 +429,14 @@ export const forceNavigator = {
 		commands[keyPrefix + ".list"] = {
 			"key": keyPrefix + ".list",
 			"url": `${baseUrl}/${keyPrefix}`,
-			"label": t("prefix.list") + " " + labelPlural
+			"label": t("prefix.list") + " " + labelPlural,
+			"apiname": name
 		}
 		commands[keyPrefix + ".new"] = {
 			"key": keyPrefix + ".new",
 			"url": `${baseUrl}/${keyPrefix}/e`,
-			"label": t("prefix.new") + " " + label
+			"label": t("prefix.new") + " " + label,
+			"apiname": name
 		}
 		if(forceNavigatorSettings.lightningMode) {
 			let targetUrl = serverUrl + "/lightning/setup/ObjectManager/" + name
@@ -340,7 +444,8 @@ export const forceNavigator = {
 				commands[keyPrefix + "." + key] = {
 					"key": keyPrefix + "." + key,
 					"url": targetUrl + forceNavigator.objectSetupLabelsMap[key],
-					"label": [t("prefix.setup"), label, t(key)].join(" > ")
+					"label": [t("prefix.setup"), label, t(key)].join(" > "),
+					"apiname": name				
 				}
 			})
 		} else {
@@ -349,10 +454,53 @@ export const forceNavigator = {
 		}
 		return commands
 	},
+	"dumpToConsole":(command,event,forceNavigatorSettings)=>{
+		console.info("DUMP:")
+		console.info("	Command:", command)
+		console.info("	Event:", event)				
+		console.info("	value:", event?.value)
+		console.info("	session settings:", forceNavigatorSettings)
+		console.info("	server instance: ", forceNavigator.serverInstance)
+		console.info("	API Url: ", forceNavigator.apiUrl)
+
+		//Filter the dump: event?.value is the text the user entered.   assume the syntax "dump xxx yyy zzz" and show only lines that match
+		//the filter parameters
+		let parameters = event?.value?.split(" ")
+		if(parameters) {
+			parameters.shift()
+		} else {
+			parameters[0]=""
+		}
+		//console.info("Commands: ", forceNavigator.commands)
+		console.info("	Commands that contain " , parameters ,  ":")
+		let tempResultTable=[]
+		let tempCount=0
+		for(const key in forceNavigator.commands) {
+			const label = (forceNavigator.commands[key]?.label ?? "")
+			const url = (forceNavigator.commands[key]?.url ?? "").substring(0,100)
+			const apiname = (forceNavigator.commands[key]?.apiname ?? "").substring(0,20)
+			const key_label_apiname=(key+label+url+apiname).toLowerCase()
+
+			//If all elements of parameter[] appear in key_label_apiname, print it					
+			if(parameters.every(item => key_label_apiname.includes(item))) {
+				tempResultTable.push([label,key,apiname,url])
+				tempCount++
+			}
+		}
+		console.table(tempResultTable)
+		console.info(tempCount + " records dumped")
+
+	},
 	"invokeCommand": (command, newTab, event)=>{
-		if(!command) { return false }
+
+		console.log("> invoke Command (", command ,",", newTab ,",",  event ,")")
+		if(!command && event?.value) { 
+			//if the command is not recognised. used the textbox value itself
+			command = {"key": event?.value}
+		}
 		let targetUrl
 		if(typeof command != "object") command = {"key": command}
+
 		if(typeof forceNavigator.commands[command.key] != 'undefined' && forceNavigator.commands[command.key].url) {
 			targetUrl = forceNavigator.commands[command.key].url
 		}
@@ -370,6 +518,11 @@ export const forceNavigator = {
 					const recordId = matching[2]
 					targetUrl = forceNavigator.commands[command.key].url.replace("$SOBJECT", sObject).replace("$RECORDID", recordId)
 			}
+		} else if (command.key.startsWith("dump")) {
+			//DUMP
+			forceNavigator.dumpToConsole(command,event,forceNavigatorSettings)
+			//ui.hideSearchBox()
+			return true
 		}
 		switch(command.key) {
 			case "commands.refreshMetadata":
@@ -393,18 +546,6 @@ export const forceNavigator = {
 				forceNavigatorSettings.set("enhancedprofiles", forceNavigatorSettings.enhancedprofiles)
 				return true
 				break
-			case "dump":
-			case "commands.dumpDebug":
-				console.info("session settings:", forceNavigatorSettings)
-				console.info("server instance: ", forceNavigator.serverInstance)
-				console.info("org ID: ", forceNavigator.organizationId)
-				console.info("API Url: ", forceNavigator.apiUrl)
-				console.info("SessionHash: ", forceNavigator.sessionHash)
-				console.info("SessionID: ", forceNavigator.sessionId)
-				console.info("Commands: ",forceNavigator.commands)
-				ui.hideSearchBox()
-				return true
-				break
 			case "commands.toggleDeveloperName":
 			    forceNavigatorSettings.developername = !forceNavigatorSettings.developername
 				forceNavigatorSettings.set("developername", forceNavigatorSettings.developername)
@@ -413,8 +554,14 @@ export const forceNavigator = {
 			case "commands.setup":
 				targetUrl = forceNavigator.serverInstance + (forceNavigatorSettings.lightningMode ? "/lightning/setup/SetupOneHome/home" : "/ui/setup/Setup")
 				break
-			case "commands.home":
-				targetUrl = forceNavigator.serverInstance + "/"
+				case "commands.home":
+					targetUrl = forceNavigator.serverInstance + "/"
+					break
+			case "commands.logout":
+				targetUrl = forceNavigator.serverInstance + "/secur/logout.jsp"
+				break
+			case "commands.help":
+				chrome.runtime.sendMessage({"action": "help"})
 				break
 			case "commands.toggleAllCheckboxes":
 				Array.from(document.querySelectorAll('input[type="checkbox"]')).forEach(c => c.checked=(c.checked ? false : true))
@@ -461,6 +608,7 @@ export const forceNavigator = {
 		forceNavigator.commands = {}
 		Array(
 			"commands.home",
+			"commands.logout",
 			"commands.setup",
 			"commands.mergeAccounts",
 			"commands.toggleAllCheckboxes",
@@ -472,8 +620,12 @@ export const forceNavigator = {
 			"commands.loginAs",
 			"commands.toggleEnhancedProfiles",
 			"commands.refreshMetadata",
+			"report.runReport",
+			"report.editReport",			
 		).filter(i=>i).forEach(c=>{forceNavigator.commands[c] = {"key": c}})
+
 		forceNavigatorSettings.availableThemes.forEach(th=>forceNavigator.commands["commands.themes" + th] = { "key": "commands.themes" + th })
+
 		Object.keys(forceNavigator.urlMap).forEach(c=>{forceNavigator.commands[c] = {
 			"key": c,
 			"url": forceNavigator.urlMap[c][modeUrl],
@@ -559,13 +711,13 @@ export const forceNavigator = {
 			"domain": forceNavigator.serverInstance,
 			"apiUrl": forceNavigator.apiUrl,
 			"key": forceNavigator.organizationId,
-			"force": force,
-			"sessionId": forceNavigator.sessionId,
-			"serverUrl" : forceNavigator.serverUrl,
-			"action": "getMetadata"
-		}
-		chrome.runtime.sendMessage(options, response=>Object.assign(forceNavigator.commands, response))
-		chrome.runtime.sendMessage(Object.assign(options, {"action": "getActiveFlows"}), response=>Object.assign(forceNavigator.commands, response))
+				"force": force,
+				"sessionId": forceNavigator.sessionId,
+				"serverUrl" : forceNavigator.serverUrl,
+				"action": "getMetadata"
+			}
+			chrome.runtime.sendMessage(options, response=>Object.assign(forceNavigator.commands, response))
+			chrome.runtime.sendMessage(Object.assign(options, {"action": "getActiveFlows"}), response=>Object.assign(forceNavigator.commands, response))
 		forceNavigator.otherExtensions.filter(e=>{ return e.platform == (!!window.chrome ? "chrome-extension" : "moz-extension") }).forEach(e=>chrome.runtime.sendMessage(
 			Object.assign(options, { "action": "getOtherExtensionCommands", "otherExtension": e }), r=>{ return Object.assign(forceNavigator.commands, r) }
 		))
@@ -633,7 +785,7 @@ export const forceNavigator = {
 		"objects.recordTypes": "/RecordTypes/view",
 		"objects.relatedLookupFilters": "/RelatedLookupFilters/view",
 		"objects.searchLayouts": "/SearchLayouts/view",
-		"objects.triggers": "/Triggers/view",
+		"objects.triggers": "/ApexTriggers/view",
 		"objects.lightningPages": "/LightningPages/view",
 		"objects.validationRules": "/ValidationRules/view"
 	},
@@ -1452,5 +1604,235 @@ export const forceNavigator = {
 			"lightning":"/lightning/setup/TestEmailDeliverability/home",
 			"classic":""
 		},
+		"report.runReport": {
+			"lightning":"/lightning/o/Report/home",
+			"classic":"/00O/o"
+		},
+		"report.editReport": {
+			"lightning":"/lightning/o/Report/home",
+			"classic":"/00O/o"
+		},
 	}
+}
+
+
+export const sfObjectsGetData = {
+	"fieldsAndRelationships": {
+		"getDataRequest" : (apiname) => `/query/?q=SELECT DurableId, QualifiedApiName, Label, DataType, ValueTypeId FROM FieldDefinition WHERE EntityDefinition.QualifiedApiName = '${apiname}'`,
+		"processResponse" : (apiname,label,response) => {
+			let objCommands ={}
+			response.records.forEach(f=>{
+				let fieldId=f.DurableId.split(".")[1]
+				let key = "3rdlevel." + f.QualifiedApiName
+				objCommands[key] = {
+					"key": key,
+					"url": `/lightning/setup/ObjectManager/${apiname}/FieldsAndRelationships/${fieldId}/view`,
+					"label": label + " >> " + f.QualifiedApiName,
+					"sortValue" : 0.9  // Will cuase it to appear low on the sort
+				}
+				objCommands[key+ ".fieldLevelSecurity"] = {
+					"key": key + ".fieldLevelSecurity",
+					"url": `/lightning/setup/ObjectManager/${apiname}/FieldsAndRelationships/${fieldId}/edit?standardEdit=true`,
+					"label": label + " >> " + f.QualifiedApiName + " >> Field Level Security",
+					"sortValue" : 0.1  // Will cuase it to appear low on the sort
+				}
+
+			})
+			return objCommands
+		}
+	},
+	"triggers": {
+		"getDataRequest" : (apiname) => `/query/?q=SELECT id,Name FROM ApexTrigger where TableEnumOrId='${apiname}'`,
+		"processResponse" : (apiname,label,response) => {
+			let objCommands ={}
+			response.records.forEach(f=>{
+				let fieldId=f.Id
+				let key = "3rdlevel." + f.Name
+				objCommands[key] = {
+					"key": key,
+					"url": `/lightning/setup/ObjectManager/${apiname}/ApexTriggers/${fieldId}/view`,
+					"label": label + " >> " + f.Name,
+				}
+			})
+			return objCommands
+		}
+	},
+	"list":{
+		//For "List Object", will load all Listviews defined. for example "List Cases >> Open Cases", "List Cases >> Closed Cases"
+		"getDataRequest" : (apiname) => `/query/?q=SELECT Id, Name, DeveloperName, SobjectType FROM ListView Where SobjectType='${apiname}'`,
+		"processResponse" : (apiname,label,response) => {
+			let objCommands ={}
+			response.records.forEach(f=>{
+				objCommands["ListView." + f.Name] = {
+					"key": "ListView." + f.Name,
+					"url": `/lightning/o/${apiname}/list?filterName=${f.Id}`,
+					"label": label + " >> " + f.Name
+				}
+			})
+			return objCommands
+		}
+	},
+	"pageLayouts":{
+		"getDataRequest" : (apiname) => `/tooling/query?q=SELECT+Id,Name+FROM+Layout WHERE TableEnumOrId='${apiname}'`,
+		"processResponse" : (apiname,label,response) => {
+			let objCommands ={}
+			
+			response.records.forEach(f=>{
+				objCommands["PageLayout." + f.Name] = {
+					"key": "PageLayout." + f.Name,
+					"url": `/lightning/setup/ObjectManager/${apiname}/PageLayouts/${f.Id}/view`,
+					"label": label + " >> " + f.Name
+				}
+			})			
+			return objCommands
+		}
+	},
+	"validationRules":{
+		"getDataRequest" : (apiname) => `/tooling/query?q=SELECT Id, ValidationName FROM ValidationRule where EntityDefinition.DeveloperName = '${apiname}'`,
+		"processResponse" : (apiname,label,response) => {
+			let objCommands ={}
+			response.records.forEach(f=>{
+				objCommands["ValidationRules." + f.ValidationName] = {
+					"key": "ValidationRules." + f.ValidationName,
+					"url": `/lightning/setup/ObjectManager/${apiname}/ValidationRules/${f.Id}/view`,
+					"label": label + " >> "+ f.ValidationName
+				}
+			})
+			return objCommands
+		}
+	},
+	"users":{
+		"getDataRequest" : (apiname) => `/query/?q=select id,name from user`,
+		"processResponse" : (apiname,label,response) => {
+			let objCommands ={}
+			response.records.forEach(f=>{
+				let key = "users." + f.Name
+				objCommands[key] = {
+					"key": key,
+					"url": `/lightning/setup/ManageUsers/page?address=%2F${f.Id}%3Fnoredirect%3D1%26isUserEntityOverride%3D1`,
+					"label": label + " >> "+ f.Name,
+					"sortValue" : 0.9  // Will cuase it to appear low on the sort
+				}
+			})
+			return objCommands
+		}
+	},
+	"permissionSets":{
+		"getDataRequest" : (apiname) => `/query/?q=select type,id,label from PermissionSet where type in ('Regular','Standard','Session','')`,
+		"processResponse" : (apiname,label,response) => {
+			let objCommands ={}
+			response.records.forEach(f=>{
+				let key = "permissionset." + f.Label
+				objCommands[key] = {
+					"key": key,
+					"url": `/lightning/setup/PermSets/page?address=%2F${f.Id}`,
+					"label": label + " >> "+ f.Label,
+				}
+				objCommands[key+ ".objectSettings"] = {
+					"key": key + ".objectSettings",
+					"url": `/lightning/setup/PermSets/page?address=%2F${f.Id}%3Fs%3DEntityPermissions`,
+					"label": label + " >> "+ f.Label + " >> "+t("moreData.objectSettings"),
+					"sortValue" : 0.5  // Will cuase it to appear low on the sort
+				}
+			})
+			return objCommands
+		}
+	},
+	"permissionSetGroups":{
+		"getDataRequest" : (apiname) => `/query/?q=select id,MasterLabel from PermissionSetGroup`,
+		"processResponse" : (apiname,label,response) => {
+			let objCommands ={}
+			response.records.forEach(f=>{
+				let key = "permissionsetgroup." + f.MasterLabel 
+				objCommands[key] = {
+					"key": key,
+					"url": `/lightning/setup/PermSetGroups/page?address=%2F${f.Id}`,
+					"label": label + " >> "+ f.MasterLabel,
+				}
+				objCommands[key+"permissionSetsIncluded"] = {
+					"key": key+"permissionSetsIncluded",
+					"url": `/lightning/setup/PermSetGroups/page?address=%2F${f.Id}%3Fs%3DComponentPS`,
+					"label": label + " >> "+ f.MasterLabel + " >> " +t("moreData.permissionSetsInGroup"),
+					"sortValue" : 0.5  // Will cuase it to appear low on the sort
+				}
+			})
+			return objCommands
+		}
+	},
+	"runReport":{			
+		"getDataRequest" : (apiname) => `/query/?q=select Id, Name from report where IsDeleted=false`,
+		"processResponse" : (apiname,label,response) => {
+			let objCommands ={}
+			response.records.forEach(f=>{
+				objCommands["RunReport." + f.Name] = {
+					"key": "RunReport." + f.Name,
+					"url": `/lightning/r/sObject/${f.Id}/view`,
+					"label": t("prefix.setup") + " > " + t("report.runReport") + " >> " + f.Name
+				}
+				objCommands["EditReport." + f.Name] = {
+					"key": "EditReport." + f.Name,
+					"url": `/lightning/r/sObject/${f.Id}/edit`,
+					"label": t("prefix.setup") + " > " + t("report.editReport") + " >> " + f.Name 
+				}
+			})			
+			return objCommands
+		}
+	},
+	"editReport":{		
+		"getDataRequest" : (apiname) => `/query/?q=select Id, Name from report where IsDeleted=false`,
+		"processResponse" : (apiname,label,response) => {
+			let objCommands ={}
+			response.records.forEach(f=>{
+				objCommands["RunReport." + f.Name] = {
+					"key": "RunReport." + f.Name,
+					"url": `/lightning/r/sObject/${f.Id}/view`,
+					"label": t("prefix.setup") + " > " + t("report.runReport") + " >> " + f.Name
+				}
+				objCommands["EditReport." + f.Name] = {
+					"key": "EditReport." + f.Name,
+					"url": `/lightning/r/sObject/${f.Id}/edit`,
+					"label": t("prefix.setup") + " > " + t("report.editReport") + " >> " + f.Name 
+				}
+			})			
+			return objCommands
+		}
+	},
+	"profiles":{
+		"getDataRequest" : (apiname) => `/query/?q=Select Id, Name From Profile`,
+		"processResponse" : (apiname,label,response) => {
+			let objCommands ={}			 
+			response.records.forEach(f=>{
+				let key = "profiles." + f.Name
+				objCommands[key] = {
+					"key": key,
+					"url": `/lightning/setup/Profiles/page?address=%2F${f.Id}`,
+					"label": t("prefix.setup") + " > " + t("setup.profiles") + " >> " + f.Name 				
+				}
+			})
+			return objCommands
+		}
+	},
+	"apexClasses":{
+		"getDataRequest" : (apiname) => `/query/?q=Select Id, Name From ApexClass`,
+		"processResponse" : (apiname,label,response) => {
+			let objCommands ={}			 
+			response.records.forEach(f=>{
+				let key = "apexClasses." + f.Name
+				objCommands[key] = {
+					"key": key,
+					"url": `/lightning/setup/ApexClasses/page?address=%2F${f.Id}`,
+					"label": t("setup.apexClasses") + " >> " + f.Name 				
+				}
+			})
+			return objCommands
+		}
+	},
+	"TEMPLATE":{
+		"getDataRequest" : (apiname) => ``,
+		"processResponse" : (apiname,label,response) => {
+			let objCommands ={}
+			return objCommands
+		}
+	},
+	
 }

@@ -2,7 +2,15 @@ import { lisan, t } from "lisan"
 import Mousetrap from "mousetrap"
 lisan.add(require(`./languages/en-US.js`))
 
-export const _d = (i)=>{ i && console.debug(...(i[Symbol.iterator] ? i : [i])) }
+export const _d = (i)=>{
+	console.debug("_D():")
+    console.error(`${i.name}: ${i.message}`);
+	i && console.debug(...(i[Symbol.iterator] ? i : [i])) 
+	console.debug("_D() ---------------------")
+
+}
+
+
 const inputHandler = (function(m) {
 	var _global_callbacks = {},
 		_original_stop_callback = m.stopCallback
@@ -20,6 +28,11 @@ const inputHandler = (function(m) {
 	}
 	return m
 })(Mousetrap)
+
+//lookup modes: 
+export const LOOKUP_MODE_SHOW_COMMANDS = 1	    	//when any command is entered, show the commands completion options
+export const LOOKUP_MODE_COMPLETE_OBJECT_NAME = 2 	//When query contains only an object name, assist in completeion
+export const LOOKUP_MODE_SHOW_SEARCH_RESULTS =3 	//When query contains an object and value to search --> show results
 
 export const ui = {
 	"searchBox": null,
@@ -101,12 +114,50 @@ export const ui = {
 			ui.quickSearch.focus()
 		}
 	},
+
+	//lookupMode decides what is displayed in the dropdown (command completion, help text, or search resutls)
+	"lookupMode": LOOKUP_MODE_SHOW_COMMANDS,   //Default is to show command completion	
 	"lookupCommands": ()=>{
 		const input = ui.quickSearch.value
 
 		ui.clearOutput()
-		if(input.substring(0,1) == "?") ui.addSearchResult("menu.globalSearch")
-		else if(input.substring(0,1) == "!") ui.addSearchResult("menu.createTask")
+		//if(input.substring(0,1) == "?") ui.addSearchResult("menu.globalSearch")
+		if(input.substring(0,1) == "?") {
+			//Handle search.
+			//Syntax - ? sobject value
+			//example: ? account sony
+			//         ? case "not working"
+
+			//check if the search command is complete (has sobject and value to search)
+			if(input.match(/"/g)?.length %2 ==1 ) {
+				//if number of \" is odd, add another one at the end.  This way '? "account brand" '  can work
+				input += "\""
+				console.log("Added quote to >" + input+"<")
+			}
+			let searchQuery = input.split(/([^\s"]+|"[^"]*")+/g).filter(value => (value != ' ' && value != ''));
+
+			switch(searchQuery.length) {
+				case 1:
+					//Only "?" entered
+					ui.lookupMode = LOOKUP_MODE_SHOW_COMMANDS
+					break
+				case 2:
+					//2 elements - "?" and a sobject
+					ui.lookupMode = LOOKUP_MODE_COMPLETE_OBJECT_NAME
+					break
+				default:
+					//more than 2 element in the line - means we have a query
+					ui.lookupMode = LOOKUP_MODE_SHOW_SEARCH_RESULTS
+					let searchObject = searchQuery[1]?.toLowerCase()
+					ui.loadCompactLayoutIfNeeded(searchObject)
+					break
+			}
+			ui.debounceGetMoreData()
+			return
+		}
+		ui.lookupMode = LOOKUP_MODE_SHOW_COMMANDS
+
+		if(input.substring(0,1) == "!") ui.addSearchResult("menu.createTask")
 		else {
 			let words = ui.filterCommandList(input)
 			if(words.length > 0)
@@ -118,8 +169,10 @@ export const ui = {
 		let firstEl = ui.navOutput.querySelector(":first-child")
 		if(forceNavigator.listPosition == -1 && firstEl != null) firstEl.className = "sfnav_child sfnav_selected"
 
-		ui.debounceGetMoreData()	
+		ui.debounceGetMoreData()
+		
 	},
+	//filterCommandList takes input ("case field") and returns an array of all matching commands
 	"filterCommandList": (input)=>{
 		if(typeof input === 'undefined' || input == '') return []
 		input = input.toLowerCase()
@@ -152,7 +205,7 @@ export const ui = {
 				if (match == terms.length)
 					preSort[key] = sortValue
 			}
-			//Uri:  Take the weights into account when sorting, so less important items will appear lower.
+			//Take the weights into account when sorting, so less important items will appear lower.
 			//for example first will appear "Account > Fields > ...." and only after all the fields, will appear the "Account > Fields > ... > Field Level Security"			
 			const keySortValue = forceNavigator.commands[key]?.sortValue ?? 1
 			if(keySortValue!=1 && preSort[key]) {
@@ -161,23 +214,50 @@ export const ui = {
 		}
 		return Object.keys(preSort).sort((a,b)=>(preSort[b] - preSort[a])).slice(0,forceNavigatorSettings.searchLimit)
 	},
-	"addSearchResult": (key)=>{
-				let r = document.createElement("a")
-		r.setAttribute("href", (forceNavigator.commands[key]?.url ?? "#").replace('//','/'))
+	// Add one search result to dropdown
+	"addSearchResult": (key,url="")=>{
+		if(url=="") {
+			url = (forceNavigator.commands[key]?.url ?? "#").replace('//','/')
+		}
+		let r = document.createElement("a")
+		r.setAttribute("href", url)
 		r.setAttribute('data-key', key)
 		r.classList.add("sfnav_child")
 		r.onmouseover = ui.mouseHandler
 		r.onmouseout = ui.mouseHandlerOut
 		r.onclick = ui.mouseClick
-		if(forceNavigator.commands[key]?.label)
-			r.appendChild(document.createTextNode(forceNavigator.commands[key].label))
-		else
-			r.appendChild(document.createTextNode(t(key)))
+		let labelText;
+		if (forceNavigator.commands[key]?.label) {
+			labelText = forceNavigator.commands[key].label;
+		} else {
+			labelText = t(key);
+		}
+		r.appendChild(document.createTextNode(labelText));		
 		if(forceNavigator.commands[key]?.userId) {
 			r.setAttribute('data-userid',forceNavigator.commands[key].userId)
 			r.onclick = ui.mouseClickLoginAs
 		}
 		ui.navOutput.appendChild(r)
+	},
+	"searchResults": [],
+	//clear and set the entire search results array
+	"setSearchResult": (searchResults)=>{
+		ui.clearOutput()
+		searchResults.forEach(key=>{
+			let r = document.createElement("a")
+			r.setAttribute("href", key.url)
+			r.classList.add("sfnav_child")
+			r.onmouseover = ui.mouseHandler
+			r.onmouseout = ui.mouseHandlerOut
+			r.onclick = ui.mouseClick
+			if (key.label.length >150) {
+				r.classList.add("sfnav_child_extra_small")
+			} else if (key.label.length >80) {
+					r.classList.add("sfnav_child_smaller")
+			}
+			r.appendChild(document.createTextNode(key.label))
+			ui.navOutput.appendChild(r)
+		})
 	},
 		"addError": (text)=>{
 		ui.clearOutput()
@@ -195,29 +275,164 @@ export const ui = {
 		ui.navOutput.innerHTML = ""
 		forceNavigator.listPosition = -1
 	},
-		"kbdCommand": (e, keyPress)=>{
+	"doSearch": (e)=>{
+		let options = {
+			"action": "doSearch",
+			"searchQuery" :  e.target.value,
+			"apiUrl": forceNavigator.apiUrl,
+			"labelToNameFieldMapping" : forceNavigator.labelToNameFieldMapping,
+			"labelToSobjectApiNameMapping" : forceNavigator.labelToSobjectApiNameMapping,
+			"compactLayoutFieldsForSobject": forceNavigator.compactLayoutFieldsForSobject,
+			"sessionId": forceNavigator.sessionId,
+		}	
+		chrome.runtime.sendMessage(
+			options,
+			response=>{
+				if(response && response.error) { console.error("error in search: " + response.error); return }
+				try {
+					if (response) {
+						console.log("Response received from doSearch:",response)
+			
+						//Update mainFields
+						if (response.mainFields!=undefined) {
+							forceNavigator.compactLayoutFieldsForSobject[response.objectApiName] = response.mainFields
+						}
+						//If only one result was returned, jump to that record directly:
+						if (response.searchRecords.length==1) {
+							let oneResult = response.searchRecords[0]
+							let url = `/lightning/r/${oneResult.attributes.type}/${oneResult.Id}/view`
+							forceNavigator.goToUrl(url)	
+							return
+						}
 
+						forceNavigator.listPosition = -1
+						ui.quickSearch.focus()
+
+						ui.searchResults=[]
+						Object.keys(response.searchRecords).forEach(function (key) { 
+							let oneResult = response.searchRecords[key]
+
+							let desc = ""
+							Object.keys(oneResult).forEach(function (key) { 
+								let val = oneResult[key]
+								if (key!="Id" && (typeof val=='string'||typeof val=='number') && !val.match('[a-zA-Z0-9]{15}|[a-zA-Z0-9]{18}')) 
+									desc += oneResult[key] + " - "
+							})
+							desc =  desc.slice(0,-3)
+
+							let url = `/lightning/r/${oneResult.attributes.type}/${oneResult.Id}/view`
+							ui.searchResults.push({"url":url,"label":desc})
+						})
+						ui.setSearchResult(ui.searchResults)
+						//ui.lookupCommands()
+
+					} else {
+						console.error("no response from doSearch")
+					}
+				} catch(e) {
+					_d([e, response])
+				}
+			})
+	},
+	"loadCompactLayoutIfNeeded": (sobject)=>{
+		
+		if (forceNavigator.compactLayoutFieldsForSobject[sobject]==undefined) {
+			//load main fields for this object in the background
+			let options = {
+				"action": "loadCompactLayoutForSobject",
+				"apiUrl": forceNavigator.apiUrl,
+				"sessionId": forceNavigator.sessionId,
+				"sobject" : sobject,
+				"compactLayoutFieldsForSobject": forceNavigator.compactLayoutFieldsForSobject
+			}
+	
+			chrome.runtime.sendMessage(options,
+				response=>{
+					if (response?.mainFields!=undefined) {
+						forceNavigator.compactLayoutFieldsForSobject[sobject] = response.mainFields
+					}
+
+					//console.log("loaded forceNavigator.compactLayoutFieldsForSobject["+sobject+"]=",forceNavigator.compactLayoutFieldsForSobject[sobject])
+				})
+			}
+	},
+	"kbdCommand": (e, keyPress)=>{
+		//kbdCommand is called when enter/ctrl+enter/command+enter/shift+enter/TAB is pressed
+		//If enter is pressed:
+		//   in case of a command, do the selected command
+		//	 in case of a partial search (? and an object name), expand the possible objects (? prod --> ? product)
+		//   in case of search, do the search.  If a search was already done and the user chose a result, go to it's URL
+		//If TAB is pressed:
+		//   in case of a search, try to expand the object
+		//	 in case of a partial search (? and an object name), expand the possible objects (? prod --> ? product)
+		//   in case of a command, try to expand meta data (load fields for objects, report names for reports, etc)
+
+
+		// translate the text entered to command from the dropdown , if exists:
+		let cmdKey = ui.navOutput.childNodes[(forceNavigator.listPosition < 0 ? 0 : forceNavigator.listPosition)]?.dataset
+		let details = e.target
+		console.log(">>>kbdCommand :    KeyPressed: ",keyPress,", Key:", cmdKey, " details: ", details, " value: ",e.target?.value, " lookupMode: "+ui.lookupMode)
+		
 		if(keyPress == "tab") {
-			//Tab pressed.  
-			//try to get more info on the currently selected object			
-				ui.debounceGetMoreData(true)
-				return false
+			//Tab pressed.  Two options:   if this is a search (search strinwith a ?), expand fields
+			//otherwise, try to get more info on the currently selected object
+
+			switch(ui.lookupMode) {
+				case LOOKUP_MODE_SHOW_SEARCH_RESULTS:
+					console.log("Trying to expand the search objects")
+					return false
+
+				case LOOKUP_MODE_SHOW_COMMANDS :
+					ui.debounceGetMoreData(true)
+					return false
+
+				case LOOKUP_MODE_COMPLETE_OBJECT_NAME:
+					if (cmdKey!=undefined) {
+						console.log("Autocomplete "+cmdKey.key,cmdKey)
+						if (cmdKey.key.includes(" ")) 
+							cmdKey.key = `"${cmdKey.key}"`
+						ui.quickSearch.value = "? " + cmdKey.key + " "
+					}
+					ui.debounceGetMoreData(true)
+					return false
+			}
 		}
 
 		//Enter / ctrl-enter / shift-enter pressed
-		// translate the text entered to command from the dropdown , if exists:
 
-		let cmdKey = ui.navOutput.childNodes[(forceNavigator.listPosition < 0 ? 0 : forceNavigator.listPosition)]?.dataset
-		let details = e.target
-		if(["?", "!"].includes(e.target.value[0]))
-			cmdKey = { "key": (e.target.value[0] == "?" ? "commands.search" : "commands.createTask") }
+		if(["!"].includes(e.target.value[0]))
+			cmdKey = { "key": ("commands.createTask") }
 		if(!cmdKey?.key?.startsWith("commands.loginAs.") && e.target.value.toLowerCase().includes(t("prefix.loginAs").toLowerCase())) {
 			cmdKey = "commands.loginAs"
+			//details = ui.quickSearch.value
 		}
-		let newTab = forceNavigator.newTabKeys.indexOf(keyPress) >= 0 ? true : false
-		if(!newTab)
-			ui.clearOutput()
-		forceNavigator.invokeCommand(cmdKey, newTab, details)
+
+		switch(ui.lookupMode) {
+			case LOOKUP_MODE_SHOW_SEARCH_RESULTS:
+				//Search mode 
+				if (forceNavigator.listPosition>=0) {
+					let selectedResult = ui.searchResults[forceNavigator.listPosition]
+					if(selectedResult && selectedResult?.url) {
+						let newTab = forceNavigator.newTabKeys.indexOf(keyPress) >= 0 ? true : false
+						if(!newTab)
+							ui.clearOutput()
+						forceNavigator.goToUrl(selectedResult.url, newTab)	
+					}
+					return false
+				}
+
+				ui.doSearch(e)
+				return
+			case LOOKUP_MODE_SHOW_COMMANDS :
+				let newTab = forceNavigator.newTabKeys.indexOf(keyPress) >= 0 ? true : false
+				if(!newTab)
+					ui.clearOutput()
+				forceNavigator.invokeCommand(cmdKey, newTab, details)
+				break
+			case LOOKUP_MODE_COMPLETE_OBJECT_NAME:
+				return false
+		}
+
 	},
 	"selectMove": (direction)=>{
 		ui.debounceGetMoreData()
@@ -234,13 +449,14 @@ export const ui = {
 				ui.navOutput.childNodes[forceNavigator.listPosition]?.classList.add('sfnav_selected')
 				try { ui.navOutput.childNodes[forceNavigator.listPosition]?.scrollIntoViewIfNeeded() }
 				catch { ui.navOutput.childNodes[forceNavigator.listPosition]?.scrollIntoView() }
+
 				return false
 			}
 		}
 	},
 	"debounceTypingTimer" : null,	
 	"debounceGetMoreData":(tabPressed=false)=>{
-		//dealy before calling getMoreData, so it will be called only when the user stopped typing
+		//Call getMoreData with a dealy, so it will be called only when the user stopped typing
 		clearTimeout(ui.debounceTypingTimer);
 		if (tabPressed) {
 			ui.getMoreData(tabPressed=true)
@@ -249,12 +465,48 @@ export const ui = {
 		}
 	},
 	"getMoreData":(tabPressed=false)=>{
+
+		if (ui.lookupMode==LOOKUP_MODE_COMPLETE_OBJECT_NAME) {
+
+			let input=ui.quickSearch.value
+			if(input.match(/"/g)?.length %2 != 0) {
+				//if number of \" is odd, add another one at the end.  This way ' ? "account brand"   ' can work
+				input += "\""
+			}			
+			let searchQuery = input.split(/([^\s"]+|"[^"]*")+/g).filter(value => (value != ' ' && value != ''));
+			let searchObject = searchQuery[1].toLowerCase()
+			//if (searchObject.startsWith('"') && searchObject.endsWith('"'))
+//				searchObject = searchObject.slice(1, -1)
+			console.log("Expanding LOOKUP_MODE_COMPLETE_OBJECT_NAME: " + searchObject)
+			ui.clearOutput()
+			ui.loadCompactLayoutIfNeeded(searchObject)
+			let i=0
+			let objectsComplettionKeys=[]
+			for (let key in forceNavigator.labelToSobjectApiNameMapping) {
+				if (i<forceNavigatorSettings.MAX_SEARCH_RESULTS && key.startsWith(searchObject)) {
+					objectsComplettionKeys.push(key)
+					i++
+				}
+			}
+			//add the shortest keys first
+			objectsComplettionKeys.sort(function(a, b){return a.length - b.length  });
+			objectsComplettionKeys.forEach(key => ui.addSearchResult(key,'"'+key+'"') )
+			for (let key in forceNavigator.labelToSobjectApiNameMapping) {
+				if (i<forceNavigatorSettings.MAX_SEARCH_RESULTS && key.includes(searchObject) && !key.startsWith(searchObject)) {
+					ui.addSearchResult(key,'"'+key+'"')
+					i++
+				}
+			}			
+
+			return
+		}
+
 		let keyToExpand=undefined
 
 		if (ui.navOutput.childNodes.length==0 && ui.quickSearch?.value?.length>0) {
 			//There in nothing in the lookup table, meaning there is no matching command.
 			//It could be that the user entered a value that is not yet loaded, for example "Case > Fields CaseNumber".  Remove the last element, and see if "Case > Fields" is something 
-			//I can expand:			
+			//I can expand:
 			let reducedCommand = ui.quickSearch.value.split(' ')
 			reducedCommand.pop()
 			reducedCommand =  reducedCommand.join(' ')
@@ -299,8 +551,7 @@ export const ui = {
 						}
 						forceNavigator.listPosition = -1
 						
-						//update the quicksearch to have the new data appear, if the user pressed TAB. otherwise, just update the lookup values but don't change the text 
-						//the user entered
+						//update the quicksearch to have the new data appear, if the user pressed TAB. otherwise, just update the lookup values but don't change the text the user entered
 						if (tabPressed) 
 							ui.quickSearch.value = forceNavigator.commands[keyToExpand].label + ' > '
 
@@ -397,7 +648,10 @@ export const forceNavigator = {
 		]
 	}],
 	"commands": {},
-		"init": ()=>{
+	"labelToSobjectApiNameMapping":{},
+	"labelToNameFieldMapping":{},
+	"compactLayoutFieldsForSobject":{},  //for each object, what are the most important fields to display it. taken from the conmpact layout
+	"init": ()=>{
 		try {
 			document.onkeyup = (ev)=>{ window.ctrlKey = ev.ctrlKey }
 			document.onkeydown = (ev)=>{ window.ctrlKey = ev.ctrlKey }
@@ -415,7 +669,8 @@ export const forceNavigator = {
 			} else {
 				delete forceNavigator.commands["setup.enhancedProfiles"]
 			}
-					} catch(e) {
+			
+		} catch(e) {
 			console.info('err',e)
 			if(forceNavigatorSettings.debug) console.error(e)
 		}
@@ -423,6 +678,7 @@ export const forceNavigator = {
 	"createSObjectCommands": (commands, sObjectData, serverUrl) => {
 		const { labelPlural, label, name, keyPrefix } = sObjectData
 		const mapKeys = Object.keys(forceNavigator.objectSetupLabelsMap)
+
 		if (!keyPrefix || forceNavigatorSettings.skipObjects.includes(keyPrefix)) { return commands }
 		let baseUrl = ""
 		if (forceNavigatorSettings.lightningMode && name.endsWith("__mdt")) { baseUrl += "/lightning/setup/CustomMetadata/page?address=" }
@@ -490,10 +746,21 @@ export const forceNavigator = {
 		console.table(tempResultTable)
 		console.info(tempCount + " records dumped")
 
+		console.info("	labelToNameFieldMapping that contain " , parameters ,  ":")
+		tempResultTable=[]
+		tempCount=0
+		for(const key in forceNavigator.labelToNameFieldMapping) {
+			const val = forceNavigator.labelToNameFieldMapping[key]
+			if(parameters.every(item => (key + val).includes(item))) {
+				tempResultTable.push([key,val])
+				tempCount++
+			}
+		}
+		console.table(tempResultTable)
+		console.info(tempCount + " records dumped")		
 	},
 	"invokeCommand": (command, newTab, event)=>{
 
-		console.log("> invoke Command (", command ,",", newTab ,",",  event ,")")
 		if(!command && event?.value) { 
 			//if the command is not recognised. used the textbox value itself
 			command = {"key": event?.value}
@@ -501,16 +768,18 @@ export const forceNavigator = {
 		let targetUrl
 		if(typeof command != "object") command = {"key": command}
 
+		console.log("> invoke Command (", command ,",", newTab ,",",  event ,")")
+
 		if(typeof forceNavigator.commands[command.key] != 'undefined' && forceNavigator.commands[command.key].url) {
 			targetUrl = forceNavigator.commands[command.key].url
 		}
-		if(command.key.startsWith("commands.loginAs.")) {
+		if(command.key?.startsWith("commands.loginAs.")) {
 			forceNavigator.loginAsPerform(command.key.replace("commands.loginAs.",""), newTab)
 			return true
-		} else if(command.key.startsWith("commands.themes")) {
+		} else if(command.key?.startsWith("commands.themes")) {
 			forceNavigatorSettings.setTheme(command.key)
 			return true
-		} else if(command.key.startsWith("other")) {
+		} else if(command.key?.startsWith("other")) {
 			switch(command.key) {
 				case "other.inspector.showAllData":
 					const matching = location.href.match(/\/r\/([\w_]+)\/(\w+)/)
@@ -631,6 +900,7 @@ export const forceNavigator = {
 			"url": forceNavigator.urlMap[c][modeUrl],
 			"label": [t("prefix.setup"), t(c)].join(" > ")
 		}})
+
 	},
 	"searchTerms": (terms)=>{
 		// TODO doesn't work from a searched page in Lightning, SF just won't reparse the update URL because reasons, looks like they hijack the navigate event
@@ -653,7 +923,7 @@ export const forceNavigator = {
 	"getServerInstance": (settings = {})=>{
 		let serverUrl
 		let url = location.origin + ""
-		if(settings.lightningMode) {
+		if(settings.lightningMode) {// if(url.indexOf("lightning.force") != -1)
 			serverUrl = url.replace('lightning.force.com','').replace('my.salesforce.com','') + "lightning.force.com"
 		} else {
 			if(url.includes("salesforce"))
@@ -697,6 +967,9 @@ export const forceNavigator = {
 		ui.showLoadingIndicator()
 		forceNavigator.serverInstance = forceNavigator.getServerInstance(forceNavigator)
 		forceNavigator.loadCommands(forceNavigatorSettings, true)
+		forceNavigator.labelToNameFieldMapping={}
+		forceNavigator.nameToLabelFieldMapping={}
+		forceNavigator.compactLayoutFieldsForSobject={}
 		document.getElementById("sfnavQuickSearch").value = ""
 	},
 	"loadCommands": (settings, force = false) => {
@@ -716,14 +989,23 @@ export const forceNavigator = {
 				"serverUrl" : forceNavigator.serverUrl,
 				"action": "getMetadata"
 			}
-			chrome.runtime.sendMessage(options, response=>Object.assign(forceNavigator.commands, response))
-			chrome.runtime.sendMessage(Object.assign(options, {"action": "getActiveFlows"}), response=>Object.assign(forceNavigator.commands, response))
+		chrome.runtime.sendMessage(options, response=>Object.assign(forceNavigator.commands, response))
+
+		chrome.runtime.sendMessage(Object.assign(options, {"action": "getSobjectNameFields"}),
+									response=>{
+										Object.assign(forceNavigator.labelToNameFieldMapping, response.labelToNameFieldMapping)
+										Object.assign(forceNavigator.labelToSobjectApiNameMapping, response.labelToSobjectApiNameMapping)
+										//console.log("after getSobjectNameFields, loaded forceNavigator.labelToNameFieldMapping=",Object.keys(forceNavigator.labelToNameFieldMapping).length)
+									})
+
+		chrome.runtime.sendMessage(Object.assign(options, {"action": "getActiveFlows"}), response=>Object.assign(forceNavigator.commands, response))
+
 		forceNavigator.otherExtensions.filter(e=>{ return e.platform == (!!window.chrome ? "chrome-extension" : "moz-extension") }).forEach(e=>chrome.runtime.sendMessage(
 			Object.assign(options, { "action": "getOtherExtensionCommands", "otherExtension": e }), r=>{ return Object.assign(forceNavigator.commands, r) }
 		))
 		ui.hideLoadingIndicator()
 	},
-	"goToUrl": (url, newTab, settings)=>chrome.runtime.sendMessage({
+	"goToUrl": (url, newTab, settings={})=>chrome.runtime.sendMessage({
 		action: "goToUrl",
 		url: url,
 		newTab: newTab,
@@ -769,6 +1051,7 @@ export const forceNavigator = {
 	"loginAsPerform": (userId, newTab)=>{
 		let targetUrl = "https://" + forceNavigator.apiUrl + "/servlet/servlet.su?oid=" + forceNavigator.organizationId + "&suorgadminid=" + userId + "&retURL=" + encodeURIComponent(window.location.pathname) + "&targetURL=" + encodeURIComponent(window.location.pathname) + "&"
 		ui.hideSearchBox()
+		console.log ("login as url=" + targetUrl)
 		if(newTab) forceNavigator.goToUrl(targetUrl, true)
 		else forceNavigator.goToUrl(targetUrl)
 		return true

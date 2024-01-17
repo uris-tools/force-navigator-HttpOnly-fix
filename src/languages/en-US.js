@@ -251,6 +251,7 @@ module.exports = {
 		"setup.emailOutlookSync": "Email > Outlook Integration and Sync",
 		"setup.emailExternalService": "Email > Send through External Email Services",
 		"setup.emailTestDeliverability": "Email > Test Deliverability",
+		"setup.territoryModels" : "Territory Models",
 		"report.runReport" : "Run Report",
 		"report.editReport" : "Edit Report",
 		"commands.logout" : "Logout",

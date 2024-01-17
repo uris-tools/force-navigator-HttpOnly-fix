@@ -1887,6 +1887,10 @@ export const forceNavigator = {
 			"lightning":"/lightning/setup/TestEmailDeliverability/home",
 			"classic":""
 		},
+		"setup.territoryModels": {
+			"lightning":"/lightning/setup/Territory2Models/home",
+			"classic":"/ui/setup/territory2/Territory2ModelListPage?setupid=Territory2Models"
+		},
 		"report.runReport": {
 			"lightning":"/lightning/o/Report/home",
 			"classic":"/00O/o"

@@ -65,8 +65,8 @@ const loadCompactLayoutForSobject = (sobject,options,compactLayoutFieldsForSobje
 const doSearch = (searchQuery,options,sendResponse,labelToNameFieldMapping,labelToSobjectApiNameMapping,compactLayoutFieldsForSobject) => {
 	
 	//clean and identift what is searched:  What is the Sobject and what is the query
+	searchQuery = searchQuery.replace(/^\?\s*/,'')
 	let searchQueryArray = searchQuery.split(/([^\s"]+|"[^"]*")+/g).filter(value => (value != ' ' && value != ''));
-	searchQueryArray.shift() //remove the ?
 	let searchSobject=searchQueryArray[0]?.replaceAll('"','')
 	let lc_searchSobject = searchSobject.toLowerCase()
 	searchQueryArray.shift() //remove the sobject
@@ -166,7 +166,7 @@ const getMoreData = (sourceCommand,options,sendResponse)=>{
 	forceNavigator.getHTTP(url,"json", {"Authorization": "Bearer " + options.sessionId, "Accept": "application/json"})
 	.then(response => {
 		if(response && response.error) { console.error("response", response, chrome.runtime.lastError); return }
-		//console.info("Resposne:`n", response)
+		console.info("Resposne:`n", response)
 		let i = 0
 
 		//use the "processResponse" for this object type, to generate the list of commands

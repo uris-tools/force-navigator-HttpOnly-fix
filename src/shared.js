@@ -118,11 +118,12 @@ export const ui = {
 	//lookupMode decides what is displayed in the dropdown (command completion, help text, or search resutls)
 	"lookupMode": LOOKUP_MODE_SHOW_COMMANDS,   //Default is to show command completion	
 	"lookupCommands": ()=>{
-		const input = ui.quickSearch.value
+		let input = ui.quickSearch.value
 
 		ui.clearOutput()
 		//if(input.substring(0,1) == "?") ui.addSearchResult("menu.globalSearch")
 		if(input.substring(0,1) == "?") {
+			input = input.replace(/^\?\s*/,'')
 			//Handle search.
 			//Syntax - ? sobject value
 			//example: ? account sony
@@ -137,18 +138,18 @@ export const ui = {
 			let searchQuery = input.split(/([^\s"]+|"[^"]*")+/g).filter(value => (value != ' ' && value != ''));
 
 			switch(searchQuery.length) {
-				case 1:
+				case 0:
 					//Only "?" entered
 					ui.lookupMode = LOOKUP_MODE_SHOW_COMMANDS
 					break
-				case 2:
-					//2 elements - "?" and a sobject
+				case 1:
+					//1 element after the "?" --> a sobject
 					ui.lookupMode = LOOKUP_MODE_COMPLETE_OBJECT_NAME
 					break
 				default:
 					//more than 2 element in the line - means we have a query
 					ui.lookupMode = LOOKUP_MODE_SHOW_SEARCH_RESULTS
-					let searchObject = searchQuery[1]?.toLowerCase()
+					let searchObject = searchQuery[0]?.toLowerCase()
 					ui.loadCompactLayoutIfNeeded(searchObject)
 					break
 			}

@@ -94,6 +94,8 @@ export const ui = {
 		inputHandler(ui.quickSearch).bind('up', ui.selectMove.bind(this, 'up'))
 		inputHandler(ui.quickSearch).bind('backspace', function(e) { forceNavigator.listPosition = -1 })
 		ui.quickSearch.oninput = ui.lookupCommands
+		ui.quickSearch.onfocus = ui.lookupCommands
+		
 	},
 	"showLoadingIndicator": ()=>{ if(ui.navLoader) ui.navLoader.style.visibility = 'visible' },
 	"hideLoadingIndicator": ()=>{ if(ui.navLoader) ui.navLoader.style.visibility = 'hidden' },
@@ -119,6 +121,16 @@ export const ui = {
 	"lookupMode": LOOKUP_MODE_SHOW_COMMANDS,   //Default is to show command completion	
 	"lookupCommands": ()=>{
 		let input = ui.quickSearch.value
+		if (input=='') {
+			ui.clearOutput()
+			chrome.runtime.sendMessage({"action": "getCommandHistory",orgId:forceNavigator.organizationId},
+			response=>{
+				for (var i=response.commandHistory.length-1; i>=0; i--)
+					ui.addSearchResult(response.commandHistory[i])
+			})
+			return
+		}
+
 
 		ui.clearOutput()
 		//if(input.substring(0,1) == "?") ui.addSearchResult("menu.globalSearch")
@@ -133,7 +145,6 @@ export const ui = {
 			if(input.match(/"/g)?.length %2 ==1 ) {
 				//if number of \" is odd, add another one at the end.  This way '? "account brand" '  can work
 				input += "\""
-				console.log("Added quote to >" + input+"<")
 			}
 			let searchQuery = input.split(/([^\s"]+|"[^"]*")+/g).filter(value => (value != ' ' && value != ''));
 
@@ -770,6 +781,8 @@ export const forceNavigator = {
 		if(typeof command != "object") command = {"key": command}
 
 		console.log("> invoke Command (", command ,",", newTab ,",",  event ,")")
+		//Add the command to 'recent commands' list
+		chrome.runtime.sendMessage({ "action": "updateLastCommand", orgId:forceNavigator.organizationId, "lastCommand": command.key })
 
 		if(typeof forceNavigator.commands[command.key] != 'undefined' && forceNavigator.commands[command.key].url) {
 			targetUrl = forceNavigator.commands[command.key].url

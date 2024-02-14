@@ -1,6 +1,9 @@
 import { forceNavigator, forceNavigatorSettings, _d, sfObjectsGetData } from "./shared"
 import { t } from "lisan"
 const metaData = {}
+
+let commandsHistory={}
+
 const showElement = (element)=>{
 	chrome.tabs.query({currentWindow: true, active: true}, (tabs)=>{
 		switch(element) {
@@ -372,8 +375,27 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
 			break
 		case 'help':
 			chrome.tabs.create({url: chrome.extension.getURL('popup.html')});
-			break
-	}
+		break
+
+		case 'updateLastCommand':
+			var orgId=request.orgId
+			
+			if (commandsHistory[orgId]==undefined) 
+				commandsHistory[orgId]=[]
+			
+				commandsHistory[orgId].push(request.lastCommand)		
+			if (commandsHistory[orgId].length>5) {
+				commandsHistory[orgId].shift()
+			}
+		break
+
+		case 'getCommandHistory':
+			var orgId=request.orgId
+			
+			sendResponse({"commandHistory":commandsHistory[orgId]})
+
+		break
+				}
 	return true
 })
 

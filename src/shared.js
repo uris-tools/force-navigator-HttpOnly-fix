@@ -123,10 +123,14 @@ export const ui = {
 		let input = ui.quickSearch.value
 		if (input=='') {
 			ui.clearOutput()
-			chrome.runtime.sendMessage({"action": "getCommandHistory",orgId:forceNavigator.organizationId},
+			chrome.runtime.sendMessage({"action": "getCommandsHistory",orgId:forceNavigator.organizationId},
 			response=>{
-				for (var i=response.commandHistory.length-1; i>=0; i--)
-					ui.addSearchResult(response.commandHistory[i])
+				for (var i=response.commandsHistory.length-1; i>=0; i--) {
+					var key=(response.commandsHistory[i])[0]
+					var url=(response.commandsHistory[i])[1]
+					ui.searchResults.push({"url":url,"label":key})
+					ui.addSearchResult(key,url)
+				}
 			})
 			return
 		}
@@ -313,6 +317,23 @@ export const ui = {
 						if (response.searchRecords.length==1) {
 							let oneResult = response.searchRecords[0]
 							let url = `/lightning/r/${oneResult.attributes.type}/${oneResult.Id}/view`
+
+							//Add the command to 'recent commands' list
+							let desc = ""
+							Object.keys(oneResult).forEach(function (key) { 
+								let val = oneResult[key]
+								if (key!="Id" && (typeof val=='string'||typeof val=='number') && !val.match('[a-zA-Z0-9]{15}|[a-zA-Z0-9]{18}')) 
+									desc += oneResult[key] + " - "
+							})
+							desc =  desc.slice(0,-3)
+							chrome.runtime.sendMessage({
+								"action": "updateLastCommand", 
+								"orgId":forceNavigator.organizationId,
+								"key": desc,
+								"url": url})
+
+							console.log("RESULTY=",oneResult)
+
 							forceNavigator.goToUrl(url)	
 							return
 						}
@@ -428,6 +449,14 @@ export const ui = {
 						let newTab = forceNavigator.newTabKeys.indexOf(keyPress) >= 0 ? true : false
 						if(!newTab)
 							ui.clearOutput()
+
+						//Add the command to 'recent commands' list
+						chrome.runtime.sendMessage({
+							"action": "updateLastCommand", 
+							"orgId":forceNavigator.organizationId,
+							"key": selectedResult.label,
+							"url": selectedResult.url})
+
 						forceNavigator.goToUrl(selectedResult.url, newTab)	
 					}
 					return false
@@ -436,6 +465,18 @@ export const ui = {
 				ui.doSearch(e)
 				return
 			case LOOKUP_MODE_SHOW_COMMANDS :
+				if (e.target.value=="") {
+					//Nothing entered on the input box.  going to a record from the history list
+					let selectedResult = ui.searchResults[forceNavigator.listPosition]
+					if(selectedResult && selectedResult?.url) {
+						let newTab = forceNavigator.newTabKeys.indexOf(keyPress) >= 0 ? true : false
+						if(!newTab)
+
+					ui.clearOutput()
+					forceNavigator.goToUrl(selectedResult.url, newTab)	
+					}
+
+				}
 				let newTab = forceNavigator.newTabKeys.indexOf(keyPress) >= 0 ? true : false
 				if(!newTab)
 					ui.clearOutput()
@@ -777,13 +818,10 @@ export const forceNavigator = {
 			//if the command is not recognised. used the textbox value itself
 			command = {"key": event?.value}
 		}
-		let targetUrl
+		let targetUrl=""
 		if(typeof command != "object") command = {"key": command}
 
 		console.log("> invoke Command (", command ,",", newTab ,",",  event ,")")
-		//Add the command to 'recent commands' list
-		chrome.runtime.sendMessage({ "action": "updateLastCommand", orgId:forceNavigator.organizationId, "lastCommand": command.key })
-
 		if(typeof forceNavigator.commands[command.key] != 'undefined' && forceNavigator.commands[command.key].url) {
 			targetUrl = forceNavigator.commands[command.key].url
 		}
@@ -804,9 +842,17 @@ export const forceNavigator = {
 		} else if (command.key.startsWith("dump")) {
 			//DUMP
 			forceNavigator.dumpToConsole(command,event,forceNavigatorSettings)
-			//ui.hideSearchBox()
+			ui.hideSearchBox()
 			return true
 		}
+
+		//Add the command to 'recent commands' list
+		chrome.runtime.sendMessage({
+			"action": "updateLastCommand", 
+			"orgId":forceNavigator.organizationId,
+			"key": command.key,
+			"url": targetUrl})
+
 		switch(command.key) {
 			case "commands.refreshMetadata":
 				forceNavigator.refreshAndClear()
@@ -837,15 +883,17 @@ export const forceNavigator = {
 			case "commands.setup":
 				targetUrl = forceNavigator.serverInstance + (forceNavigatorSettings.lightningMode ? "/lightning/setup/SetupOneHome/home" : "/ui/setup/Setup")
 				break
-				case "commands.home":
-					targetUrl = forceNavigator.serverInstance + "/"
-					break
+			case "commands.home":
+				targetUrl = forceNavigator.serverInstance + "/"
+				break
 			case "commands.logout":
 				targetUrl = forceNavigator.serverInstance + "/secur/logout.jsp"
 				break
 			case "commands.help":
 				chrome.runtime.sendMessage({"action": "help"})
-				break
+				ui.hideSearchBox()
+				return true
+				
 			case "commands.toggleAllCheckboxes":
 				Array.from(document.querySelectorAll('input[type="checkbox"]')).forEach(c => c.checked=(c.checked ? false : true))
 				ui.hideSearchBox()

@@ -380,19 +380,30 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
 		case 'updateLastCommand':
 			var orgId=request.orgId
 			
+			if (request.key==undefined || request.url==undefined)
+				break
+
 			if (commandsHistory[orgId]==undefined) 
 				commandsHistory[orgId]=[]
 			
-				commandsHistory[orgId].push(request.lastCommand)		
-			if (commandsHistory[orgId].length>5) {
+			var command=[request.key,request.url]
+			//if already exists in history, move it to top
+			for (var i=commandsHistory[orgId].length-1; i>=0; i--) {
+				if (commandsHistory[orgId][i][0]==request.key) {
+					commandsHistory[orgId].splice(i,1)
+					break
+				}
+			}
+			commandsHistory[orgId].push(command)		
+			if (commandsHistory[orgId].length>8) {
 				commandsHistory[orgId].shift()
 			}
 		break
 
-		case 'getCommandHistory':
+		case 'getCommandsHistory':
 			var orgId=request.orgId
-			
-			sendResponse({"commandHistory":commandsHistory[orgId]})
+			//console.log("getCommandsHistory: ",commandsHistory[orgId])
+			sendResponse({"commandsHistory":commandsHistory[orgId]})
 
 		break
 				}

@@ -219,7 +219,7 @@ const goToUrl = (targetUrl, newTab, settings = {})=>{
 		else
 			newUrl = targetUrl
 		if(newTab)
-			chrome.tabs.create({ "active": false, "url": newUrl })
+			chrome.tabs.create({ "active": false, "url": newUrl, "index" : (tabs[0].index+1) })
 		else
 			chrome.tabs.update(tabs[0].id, { "url": newUrl })
 	})

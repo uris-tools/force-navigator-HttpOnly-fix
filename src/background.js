@@ -1,7 +1,6 @@
 import { forceNavigator, forceNavigatorSettings, _d, sfObjectsGetData } from "./shared"
 import { t } from "lisan"
 const metaData = {}
-
 let commandsHistory={}
 
 const showElement = (element)=>{
@@ -42,34 +41,32 @@ const loadCompactLayoutForSobject = (sobject,options,compactLayoutFieldsForSobje
 			if (response.hasOwnProperty(responseKey)) {
 				response[responseKey].fieldItems.forEach(f=>{
 					mainFields += f.layoutComponents[0].details.name + ","
-				})				
+				})
 			}
 		}
-		mainFields = mainFields.slice(0,-1) 
+		mainFields = mainFields.slice(0,-1)
 		compactLayoutFieldsForSobject[sobject]=mainFields
 		console.log("m,="+mainFields)
-		if (sendResponse) 
+		if (sendResponse)
 			sendResponse({"mainFields": mainFields})
-		else 
+		else
 			return mainFields
 	}).catch(e=>_d(e))
 }
 
-
 /*
  Do a search for objects on SF.
  searchQuery would be an array of strings to perform the SOSL search
-   
+
  parameters:
-      searchQuery - text query entered by user
+	 searchQuery - text query entered by user
 		options - hash passed from caller with context information
- 		sendResponse - a callback from the main page
+		sendResponse - a callback from the main page
 */
 const doSearch = (searchQuery,options,sendResponse,labelToNameFieldMapping,labelToSobjectApiNameMapping,compactLayoutFieldsForSobject) => {
-	
 	//clean and identift what is searched:  What is the Sobject and what is the query
 	searchQuery = searchQuery.replace(/^\?\s*/,'')
-	let searchQueryArray = searchQuery.split(/([^\s"]+|"[^"]*")+/g).filter(value => (value != ' ' && value != ''));
+	let searchQueryArray = searchQuery.split(/([^\s"]+|"[^"]*")+/g).filter(value => (value != ' ' && value != ''))
 	let searchSobject=searchQueryArray[0]?.replaceAll('"','')
 	let lc_searchSobject = searchSobject.toLowerCase()
 	searchQueryArray.shift() //remove the sobject
@@ -77,22 +74,20 @@ const doSearch = (searchQuery,options,sendResponse,labelToNameFieldMapping,label
 	if (searchText.startsWith('"') && searchText.endsWith('"'))
 		searchText = searchText.slice(1, -1)
 	//encode special characters:
-	const specialChars = ['?', '&', '|', '!', '{', '}', '[', ']', '(', ')', '^', '~', '*', ':', '\\', '"', '\'', '+', '-'];
+	const specialChars = ['?', '&', '|', '!', '{', '}', '[', ']', '(', ')', '^', '~', '*', ':', '\\', '"', '\'', '+', '-']
 	for (const char of specialChars) {
-		const regex = new RegExp('\\' + char, 'g');
-		searchText = searchText.replace(regex, '\\' + char);
+		const regex = new RegExp('\\' + char, 'g')
+		searchText = searchText.replace(regex, '\\' + char)
 	}
-
 	//Which API field is the "Name" field of the record (account name, case number, product name, etc)
 	const nameField = labelToNameFieldMapping[lc_searchSobject]
 	if (!nameField) {
 		console.table(labelToNameFieldMapping)
 		sendResponse({ "error": "can't find field " + lc_searchSobject})
-		return 
+		return
 	}
 	const objectApiName = labelToSobjectApiNameMapping[lc_searchSobject]
 	const lc_objectApiName = objectApiName.toLowerCase()
-
 	let fieldsToReturn=""
 	if (compactLayoutFieldsForSobject[lc_objectApiName]!=undefined) {
 		fieldsToReturn=`(Id,${compactLayoutFieldsForSobject[lc_objectApiName]})`
@@ -100,32 +95,20 @@ const doSearch = (searchQuery,options,sendResponse,labelToNameFieldMapping,label
 		console.log("compactLayoutFieldsForSobject is missing for "+lc_objectApiName+":",compactLayoutFieldsForSobject)
 		fieldsToReturn=`(Id,${nameField})`
 	}
-
 	let SOQLQuery = `FIND {${searchText}} IN NAME FIELDS RETURNING ${objectApiName} ${fieldsToReturn} LIMIT 7`
-	//let SOQLQuery = `FIND {${searchText}} RETURNING ${objectApiName} (Id,${nameField} USING LISTVIEW = Recent) LIMIT 7`
-	//console.log("SOSL Query :" + SOQLQuery)
-
-	let url ="https://" + options.apiUrl + '/services/data/' + forceNavigator.apiVersion + '/search/?q=' + encodeURI(SOQLQuery) 
-
-	//console.info(`>>  curl --ssl-no-revoke -H "Authorization: Bearer ${options.sessionId}" "${url}"`)
-	
+	let url ="https://" + options.apiUrl + '/services/data/' + forceNavigator.apiVersion + '/search/?q=' + encodeURI(SOQLQuery)
 	forceNavigator.getHTTP(url,"json", {"Authorization": "Bearer " + options.sessionId, "Accept": "application/json"})
 	.then(response => {
 		console.info("doSearch Resposne:`n", response)
 		if(response && response.error) { console.error("response", response, chrome.runtime.lastError); return }
-
-		let i = 0
 		sendResponse({
 			"searchRecords": response.searchRecords,
 			"searchObject" : lc_searchSobject,
 			"objectApiName" : objectApiName,
 			"mainFields": compactLayoutFieldsForSobject[objectApiName]})
 		return
-	
 	}).catch(e=>_d(e))
 }
-
-
 
 /*
  get details of an object (fields, page layouts, etc)
@@ -137,21 +120,15 @@ const getMoreData = (sourceCommand,options,sendResponse)=>{
 	let apiname = sourceCommand.apiname
 	let label = sourceCommand.label
 	let key = sourceCommand.key
-
-	// console.debug("getmoredata>key = " + key +", Label = " + label + ",apiname = " +apiname)
-
 	//last element in the key indicates what to load
 	let commandArray = key.split('.')
 	let infoToGet = commandArray[commandArray.length-1]
-
 	if (sourceCommand.detailsAlreadyLoaded) {
 		sendResponse({ "info": "already loaded data for " + infoToGet })
 		return
 	}
-
 	//Find the relevant query for this object, based on sfObjectsGetData
-	console.info("Loading >" + infoToGet+ "< of obj >" +  apiname +"<",commandArray)
-	let baseurl="https://" + options.apiUrl + '/services/data/' + forceNavigator.apiVersion 
+	let baseurl="https://" + options.apiUrl + '/services/data/' + forceNavigator.apiVersion
 	let url = ""
 	try {
 		if (typeof sfObjectsGetData[infoToGet] != "undefined") {
@@ -164,23 +141,14 @@ const getMoreData = (sourceCommand,options,sendResponse)=>{
 	} catch (e){
 		_d(e)
 	}
-		
-	//console.info(`>>  curl --ssl-no-revoke -H "Authorization: Bearer ${options.sessionId}" "${encodeURI(url)}"`)		
 	forceNavigator.getHTTP(url,"json", {"Authorization": "Bearer " + options.sessionId, "Accept": "application/json"})
 	.then(response => {
 		if(response && response.error) { console.error("response", response, chrome.runtime.lastError); return }
-		console.info("Resposne:`n", response)
-		let i = 0
-
 		//use the "processResponse" for this object type, to generate the list of commands
 		let objCommands= sfObjectsGetData[infoToGet].processResponse(apiname,label,response)
-
-		//console.log("loaded " + (Object.keys(objCommands).length) + " records.")				
 		Object.assign(metaData[options.sessionHash], objCommands)
 		sendResponse(objCommands)
-	
 	}).catch(e=>_d(e))
-	
 }
 
 const getOtherExtensionCommands = (otherExtension, requestDetails, settings = {}, sendResponse)=>{
@@ -203,14 +171,15 @@ const getOtherExtensionCommands = (otherExtension, requestDetails, settings = {}
 }
 
 const parseMetadata = (data, url, settings = {}, serverUrl)=>{
-	if (data.length == 0 || typeof data.sobjects == "undefined") return false
-	let mapKeys = Object.keys(forceNavigator.objectSetupLabelsMap)
+	if (data.length == 0 || typeof data.sobjects == "undefined")
+		return false
+	const mapKeys = Object.keys(forceNavigator.objectSetupLabelsMap)
 	return data.sobjects.reduce((commands, sObjectData) => forceNavigator.createSObjectCommands(commands, sObjectData, serverUrl), {})
 }
 
 const goToUrl = (targetUrl, newTab, settings = {})=>{
 	chrome.tabs.query({currentWindow: true, active: true}, (tabs)=>{
-		const re = new RegExp("\\w+-extension:\/\/"+chrome.runtime.id,"g");
+		const re = new RegExp("\\w+-extension:\/\/"+chrome.runtime.id,"g")
 		targetUrl = targetUrl.replace(re,'')
 		let newUrl = targetUrl.match(/.*?\.com(.*)/)
 		newUrl = newUrl ? newUrl[1] : targetUrl
@@ -233,9 +202,9 @@ chrome.commands.onCommand.addListener((command)=>{
 		case 'goToReports': goToUrl(".com/00O"); break
 	}
 })
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
 	var apiUrl = request.serverUrl?.replace('lightning.force.com','my.salesforce.com')
-	console.debug("OnMessage : " + request.action + (apiUrl ? (" : " + apiUrl) : "" ) )
 	switch(request.action) {
 		case "goToUrl":
 			goToUrl(request.url, request.newTab, request.settings)
@@ -247,8 +216,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
 			request.sid = request.uid = request.domain = request.oid = ""
 			chrome.cookies.getAll({}, (all)=>{
 				all.forEach((c)=>{
-					//if (c.name="sid" && c.value.includes("!")) {console.log("cookie: " +c.domain + '   ' + c.value)}
-					if(c.domain==request.serverUrl && c.name === "sid") {
+					if(c.domain == request.serverUrl && c.name === "sid") {
 						request.sid = c.value
 						request.domain = c.domain
 						request.oid = request.sid.match(/([\w\d]+)/)[1]
@@ -265,7 +233,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
 						if(request.sid === "") {
 							console.log("No session data found for " + request.serverUrl)
 							sendResponse({error: "No session data found for " + request.serverUrl})
-							return 
+							return
 						}
 						forceNavigator.getHTTP( apiUrl + '/services/data/' + forceNavigator.apiVersion, "json",
 							{"Authorization": "Bearer " + request.sid, "Accept": "application/json"}
@@ -277,8 +245,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
 							else sendResponse({error: "No user data found for " + request.oid})
 						})
 					}
-				)};
-		
+				)}
 			})
 			break
 		case 'getActiveFlows':
@@ -297,43 +264,38 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
 					sendResponse(flowCommands)
 				}).catch(e=>_d(e))
 			break
-
 		case 'getSobjectNameFields':
 			let labelToSobjectApiNameMapping = {}
 			let labelToNameFieldMapping = {}
-			let q = encodeURI("select QualifiedApiName, EntityDefinition.QualifiedApiName,EntityDefinition.MasterLabel from FieldDefinition where (EntityDefinition.QualifiedApiName like '%') and IsNameField = true")
-			/*
-				output format:
-					EntityDefinition.QualifiedApiName   EntityDefinition.MasterLabel    QualifiedApiName  
-					----------------                    ------------------              --------
-					API Name of the object              Object Label                    Name field for this object
-					----------------                    ------------------              --------
-					Product2                            Product                         Name              
-					Problem								Problem							ProblemNumber
-					ActivityHistory						Activity History                Subject
-
-			*/
+			const q = encodeURI("select QualifiedApiName, EntityDefinition.QualifiedApiName,EntityDefinition.MasterLabel from FieldDefinition where (EntityDefinition.QualifiedApiName like '%') and IsNameField = true")
+/*
+output format:
+	EntityDefinition.QualifiedApiName	EntityDefinition.MasterLabel		QualifiedApiName
+	----------------				------------------				--------
+	API Name of the object			Object Label					Name field for this object
+	----------------				------------------				--------
+	Product2						Product						Name
+	Problem						Problem						ProblemNumber
+	ActivityHistory				Activity History				Subject
+*/
 			forceNavigator.getHTTP("https://" + request.apiUrl + '/services/data/' + forceNavigator.apiVersion + '/query/?q=' + q , "json",
 				{"Authorization": "Bearer " + request.sessionId, "Accept": "application/json"})
 				.then(response => {
 					response.records.forEach(f=>{
 						const nameField = f.QualifiedApiName
 						const apiName = f.EntityDefinition.QualifiedApiName
-
 						let objectLabel = f.EntityDefinition.MasterLabel.toLowerCase()
 						if (labelToSobjectApiNameMapping[objectLabel]) {
 							//Duplicate label. add the API Name to distibguish the two (for example, Calendar and CalendarView have the same label)
 							objectLabel = objectLabel + "(" + apiName +")"
 						}
-						objectLabel = objectLabel.replace(/['\"]/g, "") //remove quotes
-
+						objectLabel = objectLabel.replace(/['\"]/g, "")
 						labelToSobjectApiNameMapping[objectLabel]=apiName
 						labelToNameFieldMapping[objectLabel]=nameField
 					})
 					sendResponse({"labelToNameFieldMapping":labelToNameFieldMapping,"labelToSobjectApiNameMapping":labelToSobjectApiNameMapping})
 				}).catch(e=>_d(e))
 			break
-
 		case 'getMetadata':
 			if(metaData[request.sessionHash] == null || request.force)
 				forceNavigator.getHTTP("https://" + request.apiUrl + '/services/data/' + forceNavigator.apiVersion + '/sobjects/', "json",
@@ -347,19 +309,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
 				sendResponse(metaData[request.sessionHash])
 			break
 		case 'getMoreData':
-			let sourceCommand = request.sourceCommand 
-			getMoreData(sourceCommand,request,sendResponse)
-
+			getMoreData(request.sourceCommand,request,sendResponse)
 			break
-	
 		case 'doSearch':
 			doSearch(request.searchQuery, request, sendResponse,request.labelToNameFieldMapping,request.labelToSobjectApiNameMapping,request.compactLayoutFieldsForSobject)
 			break
 		case 'loadCompactLayoutForSobject':
 			loadCompactLayoutForSobject(request.sobject, request, request.compactLayoutFieldsForSobject, sendResponse)
-			
 			break
-
 		case 'createTask':
 			forceNavigator.getHTTP("https://" + request.apiUrl + "/services/data/" + forceNavigator.apiVersion + "/sobjects/Task",
 				"json", {"Authorization": "Bearer " + request.sessionId, "Content-Type": "application/json" },
@@ -373,39 +330,29 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
 			})
 			break
 		case 'help':
-			chrome.tabs.create({url: chrome.extension.getURL('popup.html')});
-		break
-
+			chrome.tabs.create({url: chrome.extension.getURL('popup.html')})
+			break
 		case 'updateLastCommand':
-			var orgId=request.orgId
-			
-			if (request.key==undefined || request.url==undefined)
+			if (request.key == undefined || request.url == undefined)
 				break
-
-			if (commandsHistory[orgId]==undefined) 
-				commandsHistory[orgId]=[]
-			
-			var command=[request.key,request.url]
+			if (commandsHistory[ request.orgId ] == undefined)
+				commandsHistory[ request.orgId ] = []
+			var command=[ request.key, request.url ]
 			//if already exists in history, move it to top
-			for (var i=commandsHistory[orgId].length-1; i>=0; i--) {
-				if (commandsHistory[orgId][i][0]==request.key) {
-					commandsHistory[orgId].splice(i,1)
+			for (var i=commandsHistory[ request.orgId ].length - 1; i>=0; i--) {
+				if (commandsHistory[ request.orgId ][i][0] == request.key) {
+					commandsHistory[ request.orgId ].splice( i, 1)
 					break
 				}
 			}
-			commandsHistory[orgId].push(command)		
-			if (commandsHistory[orgId].length>8) {
-				commandsHistory[orgId].shift()
+			commandsHistory[ request.orgId ].push(command)
+			if (commandsHistory[ request.orgId ].length > 8) {
+				commandsHistory[ request.orgId ].shift()
 			}
-		break
-
+			break
 		case 'getCommandsHistory':
-			var orgId=request.orgId
-			//console.log("getCommandsHistory: ",commandsHistory[orgId])
-			sendResponse({"commandsHistory":commandsHistory[orgId]})
-
-		break
-				}
+			sendResponse({ "commandsHistory": commandsHistory[ request.orgId ] })
+			break
+	}
 	return true
 })
-

@@ -121,17 +121,17 @@ export const ui = {
 			ui.clearOutput()
 			chrome.runtime.sendMessage({"action": "getCommandsHistory",orgId:forceNavigator.organizationId},
 			response=>{
-				for (var i=response.commandsHistory.length-1; i>=0; i--) {
-					var key=(response.commandsHistory[i])[0]
-					var url=(response.commandsHistory[i])[1]
-					ui.searchResults.push({"url":url,"label":key})
-					ui.addSearchResult(key,url)
-				}
+				if(response.commandsHistory)
+					for (let i = response.commandsHistory.length-1; i>=0; i--) {
+						const key = (response.commandsHistory[i])[0]
+						const url = (response.commandsHistory[i])[1]
+						ui.searchResults.push({"url":url,"label":key})
+						ui.addSearchResult(key,url)
+					}
 			})
 			return
 		}
 		ui.clearOutput()
-		//if(input.substring(0,1) == "?") ui.addSearchResult("menu.globalSearch")
 		if(input.substring(0,1) == "?") {
 			input = input.replace(/^\?\s*/,'')
 			//Handle search.
@@ -156,8 +156,7 @@ export const ui = {
 				default:
 					//more than 2 element in the line - means we have a query
 					ui.lookupMode = LOOKUP_MODE_SHOW_SEARCH_RESULTS
-					let searchObject = searchQuery[0]?.toLowerCase()
-					ui.loadCompactLayoutIfNeeded(searchObject)
+					ui.loadCompactLayoutIfNeeded( searchQuery[0]?.toLowerCase() )
 					break
 			}
 			ui.debounceGetMoreData()
@@ -168,7 +167,7 @@ export const ui = {
 		else {
 			let words = ui.filterCommandList(input)
 			if(words.length > 0)
-				for (var i=0;i < words.length; ++i)
+				for (var i = 0;i < words.length; ++i)
 					ui.addSearchResult(words[i])
 			else
 				forceNavigator.listPosition = -1
@@ -190,13 +189,13 @@ export const ui = {
 			} else {
 				let match = 0
 				let sortValue = 0
-				for(let i=0;i<terms.length;i++) {
+				for(let i = 0;i<terms.length;i++) {
 					if(comboSearch.indexOf(terms[i]) != -1) {
 						match++
 						sortValue = 1
 					}
 				}
-				for(let i=1;i<=terms.length;i++) {
+				for(let i = 1;i<=terms.length;i++) {
 					if(comboSearch.indexOf(terms.slice(0,i).join(' ')) != -1)
 						sortValue++
 					else
@@ -301,7 +300,7 @@ export const ui = {
 							forceNavigator.compactLayoutFieldsForSobject[response.objectApiName] = response.mainFields
 						}
 						//If only one result was returned, jump to that record directly:
-						if (response.searchRecords.length==1) {
+						if (response.searchRecords.length == 1) {
 							let oneResult = response.searchRecords[0]
 							let url = `/lightning/r/${oneResult.attributes.type}/${oneResult.Id}/view`
 							//Add the command to 'recent commands' list
@@ -381,14 +380,12 @@ export const ui = {
 			//otherwise, try to get more info on the currently selected object
 			switch(ui.lookupMode) {
 				case LOOKUP_MODE_SHOW_SEARCH_RESULTS:
-					console.log("Trying to expand the search objects")
 					return false
 				case LOOKUP_MODE_SHOW_COMMANDS :
 					ui.debounceGetMoreData(true)
 					return false
 				case LOOKUP_MODE_COMPLETE_OBJECT_NAME:
 					if (cmdKey!=undefined) {
-						console.log("Autocomplete "+cmdKey.key,cmdKey)
 						if (cmdKey.key.includes(" "))
 							cmdKey.key = `"${cmdKey.key}"`
 						ui.quickSearch.value = "? " + cmdKey.key + " "
@@ -404,6 +401,7 @@ export const ui = {
 			cmdKey = "commands.loginAs"
 			//details = ui.quickSearch.value
 		}
+console.log(cmdKey)
 		switch(ui.lookupMode) {
 			case LOOKUP_MODE_SHOW_SEARCH_RESULTS:
 				//Search mode
@@ -466,40 +464,38 @@ export const ui = {
 		}
 	},
 	"debounceTypingTimer" : null,
-	"debounceGetMoreData":(tabPressed=false)=>{
+	"debounceGetMoreData":(tabPressed = false)=>{
 		//Call getMoreData with a dealy, so it will be called only when the user stopped typing
 		clearTimeout(ui.debounceTypingTimer)
 		if (tabPressed) {
-			ui.getMoreData(tabPressed=true)
+			ui.getMoreData(tabPressed = true)
 		} else {
-			ui.debounceTypingTimer = setTimeout(ui.getMoreData, 1000)
+			// don't get more
+			// ui.debounceTypingTimer = setTimeout(ui.getMoreData, 1000)
 		}
 	},
-	"getMoreData":(tabPressed=false)=>{
-		if (ui.lookupMode==LOOKUP_MODE_COMPLETE_OBJECT_NAME) {
-			let input=ui.quickSearch.value
+	"getMoreData":(tabPressed = false)=>{
+		if (ui.lookupMode == LOOKUP_MODE_COMPLETE_OBJECT_NAME) {
+			let input = ui.quickSearch.value
 			if(input.match(/"/g)?.length %2 != 0) {
 				//if number of \" is odd, add another one at the end.  This way ' ? "account brand"   ' can work
 				input += "\""
 			}
-			let searchQuery = input.split(/([^\s"]+|"[^"]*")+/g).filter(value => (value != ' ' && value != ''))
-			let searchObject = searchQuery[1].toLowerCase()
-			//if (searchObject.startsWith('"') && searchObject.endsWith('"'))
-//				searchObject = searchObject.slice(1, -1)
-			console.log("Expanding LOOKUP_MODE_COMPLETE_OBJECT_NAME: " + searchObject)
+			const searchQuery = input.split(/([^\s"]+|"[^"]*")+/g).filter(value => (value != ' ' && value != ''))
+			const searchObject = searchQuery[1].toLowerCase()
 			ui.clearOutput()
 			ui.loadCompactLayoutIfNeeded(searchObject)
-			let i=0
-			let objectsComplettionKeys=[]
+			let i = 0
+			let objectsCompletionKeys=[]
 			for (let key in forceNavigator.labelToSobjectApiNameMapping) {
-				if (i<forceNavigatorSettings.MAX_SEARCH_RESULTS && key.startsWith(searchObject)) {
-					objectsComplettionKeys.push(key)
+				if (i < forceNavigatorSettings.MAX_SEARCH_RESULTS && key.startsWith(searchObject)) {
+					objectsCompletionKeys.push(key)
 					i++
 				}
 			}
 			//add the shortest keys first
-			objectsComplettionKeys.sort(function(a, b){return a.length - b.length  })
-			objectsComplettionKeys.forEach(key => ui.addSearchResult(key,'"'+key+'"') )
+			objectsCompletionKeys.sort((a, b) => { return a.length - b.length })
+			objectsCompletionKeys.forEach(key => ui.addSearchResult(key,'"'+key+'"') )
 			for (let key in forceNavigator.labelToSobjectApiNameMapping) {
 				if (i<forceNavigatorSettings.MAX_SEARCH_RESULTS && key.includes(searchObject) && !key.startsWith(searchObject)) {
 					ui.addSearchResult(key,'"'+key+'"')
@@ -508,8 +504,8 @@ export const ui = {
 			}
 			return
 		}
-		let keyToExpand=undefined
-		if (ui.navOutput.childNodes.length==0 && ui.quickSearch?.value?.length>0) {
+		let keyToExpand = undefined
+		if (ui.navOutput.childNodes.length == 0 && ui.quickSearch?.value?.length>0) {
 			//There in nothing in the lookup table, meaning there is no matching command.
 			//It could be that the user entered a value that is not yet loaded, for example "Case > Fields CaseNumber".  Remove the last element, and see if "Case > Fields" is something
 			//I can expand:
@@ -525,7 +521,7 @@ export const ui = {
 			let cmdKey = ui.navOutput.childNodes[(forceNavigator.listPosition < 0 ? 0 : forceNavigator.listPosition)]?.dataset
 			keyToExpand = cmdKey?.key
 		}
-		if (keyToExpand==undefined) 
+		if (keyToExpand == undefined) 
 			return
 		if(typeof forceNavigator.commands[keyToExpand] != 'undefined') {
 			let options = {
@@ -723,7 +719,7 @@ export const forceNavigator = {
 		//console.info("Commands: ", forceNavigator.commands)
 		console.info("	Commands that contain " , parameters ,  ":")
 		let tempResultTable=[]
-		let tempCount=0
+		let tempCount = 0
 		for(const key in forceNavigator.commands) {
 			const label = (forceNavigator.commands[key]?.label ?? "")
 			const url = (forceNavigator.commands[key]?.url ?? "").substring(0,100)
@@ -739,7 +735,7 @@ export const forceNavigator = {
 		console.info(tempCount + " records dumped")
 		console.info("	labelToNameFieldMapping that contain " , parameters ,  ":")
 		tempResultTable=[]
-		tempCount=0
+		tempCount = 0
 		for(const key in forceNavigator.labelToNameFieldMapping) {
 			const val = forceNavigator.labelToNameFieldMapping[key]
 			if(parameters.every(item => (key + val).includes(item))) {
@@ -900,7 +896,7 @@ export const forceNavigator = {
 		// TODO doesn't work from a searched page in Lightning, SF just won't reparse the update URL because reasons, looks like they hijack the navigate event
 		let searchUrl = forceNavigator.serverInstance
 		searchUrl += (!forceNavigatorSettings.lightningMode)
-		? "/_ui/search/ui/UnifiedSearchResults?sen=ka&sen=500&str=" + encodeURI(terms) + "#!/str=" + encodeURI(terms) + "&searchAll=true&initialViewMode=summary"
+		? "/_ui/search/ui/UnifiedSearchResults?sen = ka&sen = 500&str=" + encodeURI(terms) + "#!/str=" + encodeURI(terms) + "&searchAll = true&initialViewMode = summary"
 		: "/one/one.app?forceReload#" + btoa(JSON.stringify({
 			"componentDef":"forceSearch:search",
 			"attributes":{
@@ -936,7 +932,7 @@ export const forceNavigator = {
 	},
 	"getSessionHash": ()=>{
 		try {
-			let sessionHash=document.cookie?.match(forceNavigator.regMatchSid_Client)[1]
+			let sessionHash = document.cookie?.match(forceNavigator.regMatchSid_Client)[1]
 			return sessionHash
 		} catch(e) { _d([e]) }
 	},
@@ -1115,11 +1111,11 @@ export const forceNavigator = {
 		},
 		"setup.objectManager": {
 			"lightning": "/lightning/setup/ObjectManager/home",
-			"classic": "/p/setup/custent/CustomObjectsPage?setupid=CustomObjects&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDevTools"
+			"classic": "/p/setup/custent/CustomObjectsPage?setupid = CustomObjects&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDevTools"
 		},
 		"setup.profiles": {
 			"lightning": "/lightning/setup/Profiles/home",
-			"classic": "/00e?setupid=EnhancedProfiles&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DUsers"
+			"classic": "/00e?setupid = EnhancedProfiles&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DUsers"
 		},
 		"setup.searchLayouts": {
 			"lightning": "/lightning/setup/EinsteinSearchLayouts/home",
@@ -1131,682 +1127,682 @@ export const forceNavigator = {
 		},
 		"setup.releaseUpdates": {
 			"lightning": "/lightning/setup/ReleaseUpdates/home",
-			"classic": "/ui/setup/releaseUpdate/ReleaseUpdatePage?setupid=ReleaseUpdates&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DAdminSetup"
+			"classic": "/ui/setup/releaseUpdate/ReleaseUpdatePage?setupid = ReleaseUpdates&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DAdminSetup"
 		},
 		"setup.users": {
 			"lightning": "/lightning/setup/ManageUsers/home",
-			"classic": "/005?isUserEntityOverride=1&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DUsers&setupid=ManageUsers"
+			"classic": "/005?isUserEntityOverride = 1&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DUsers&setupid = ManageUsers"
 		},
 		"setup.roles": {
 			"lightning": "/lightning/setup/Roles/home",
-			"classic": "/ui/setup/user/RoleViewPage?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DUsers&setupid=Roles"
+			"classic": "/ui/setup/user/RoleViewPage?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DUsers&setupid = Roles"
 		},
 		"setup.permissionSets": {
 			"lightning": "/lightning/setup/PermSets/home",
-			"classic": "/0PS?setupid=PermSets&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DUsers"
+			"classic": "/0PS?setupid = PermSets&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DUsers"
 		},
 		"setup.permissionSetGroups": {
 			"lightning": "/lightning/setup/PermSetGroups/home",
-			"classic": "/_ui/perms/ui/setup/PermSetGroupsPage?setupid=PermSetGroups&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DUsers"
+			"classic": "/_ui/perms/ui/setup/PermSetGroupsPage?setupid = PermSetGroups&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DUsers"
 		},    "Public Groups": {
 			"lightning": "/lightning/setup/PublicGroups/home",
-			"classic": "/p/own/OrgPublicGroupsPage/d?setupid=PublicGroups&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DUsers"
+			"classic": "/p/own/OrgPublicGroupsPage/d?setupid = PublicGroups&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DUsers"
 		},
 		"setup.queues": {
 			"lightning": "/lightning/setup/Queues/home",
-			"classic": "/p/own/OrgQueuesPage/d?setupid=Queues&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DUsers"
+			"classic": "/p/own/OrgQueuesPage/d?setupid = Queues&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DUsers"
 		},
 		"setup.loginHistory": {
 			"lightning": "/lightning/setup/OrgLoginHistory/home",
-			"classic": "/0Ya?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DUsers&setupid=OrgLoginHistory"
+			"classic": "/0Ya?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DUsers&setupid = OrgLoginHistory"
 		},
 		"setup.identityVerificationHistory": {
 			"lightning": "/lightning/setup/VerificationHistory/home",
-			"classic": "/setup/secur/VerificationHistory.apexp?setupid=VerificationHistory&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DUsers"
+			"classic": "/setup/secur/VerificationHistory.apexp?setupid = VerificationHistory&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DUsers"
 		},
 		"setup.companyInformation": {
 			"lightning": "/lightning/setup/CompanyProfileInfo/home",
-			"classic": "/00D41000000f27H?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCompanyProfile&setupid=CompanyProfileInfo"
+			"classic": "/00D41000000f27H?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCompanyProfile&setupid = CompanyProfileInfo"
 		},
 		"setup.fiscalYear": {
 			"lightning": "/lightning/setup/ForecastFiscalYear/home",
-			"classic": "/setup/org/orgfydetail.jsp?id=00D41000000f27H&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCompanyProfile&setupid=ForecastFiscalYear"
+			"classic": "/setup/org/orgfydetail.jsp?id = 00D41000000f27H&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCompanyProfile&setupid = ForecastFiscalYear"
 		},
 		"setup.businessHours": {
 			"lightning": "/lightning/setup/BusinessHours/home",
-			"classic": "/01m?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCompanyProfile&setupid=BusinessHours"
+			"classic": "/01m?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCompanyProfile&setupid = BusinessHours"
 		},
 		"setup.holidays": {
 			"lightning": "/lightning/setup/Holiday/home",
-			"classic": "/p/case/HolidayList?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCompanyProfile&setupid=Holiday"
+			"classic": "/p/case/HolidayList?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCompanyProfile&setupid = Holiday"
 		},
 		"setup.languageSettings": {
 			"lightning": "/lightning/setup/LanguageSettings/home",
-			"classic": "/_ui/system/organization/LanguageSettings?setupid=LanguageSettings&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCompanyProfile"
+			"classic": "/_ui/system/organization/LanguageSettings?setupid = LanguageSettings&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCompanyProfile"
 		},
 		"setup.healthCheck": {
 			"lightning": "/lightning/setup/HealthCheck/home",
-			"classic": "/_ui/security/dashboard/aura/SecurityDashboardAuraContainer?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSecurity&setupid=HealthCheck"
+			"classic": "/_ui/security/dashboard/aura/SecurityDashboardAuraContainer?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSecurity&setupid = HealthCheck"
 		},
 		"setup.sharingSettings": {
 			"lightning": "/lightning/setup/SecuritySharing/home",
-			"classic": "/p/own/OrgSharingDetail?setupid=SecuritySharing&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSecurity"
+			"classic": "/p/own/OrgSharingDetail?setupid = SecuritySharing&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSecurity"
 		},
 		"setup.fieldAccessibility": {
 			"lightning": "/lightning/setup/FieldAccessibility/home",
-			"classic": "/setup/layout/flslayoutjump.jsp?setupid=FieldAccessibility&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSecurity"
+			"classic": "/setup/layout/flslayoutjump.jsp?setupid = FieldAccessibility&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSecurity"
 		},
 		"setup.loginFlows": {
 			"lightning": "/lightning/setup/LoginFlow/home",
-			"classic": "/0Kq?setupid=LoginFlow&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSecurity"
+			"classic": "/0Kq?setupid = LoginFlow&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSecurity"
 		},
 		"setup.activations": {
 			"lightning": "/lightning/setup/ActivatedIpAddressAndClientBrowsersPage/home",
-			"classic": "/setup/secur/identityconfirmation/ActivatedIpAddressAndClientBrowsersPage.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSecurity&setupid=ActivatedIpAddressAndClientBrowsersPage"
+			"classic": "/setup/secur/identityconfirmation/ActivatedIpAddressAndClientBrowsersPage.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSecurity&setupid = ActivatedIpAddressAndClientBrowsersPage"
 		},
 		"setup.sessionManagement": {
 			"lightning": "/lightning/setup/SessionManagementPage/home",
-			"classic": "/setup/secur/session/SessionManagementPage.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSecurity&setupid=SessionManagementPage"
+			"classic": "/setup/secur/session/SessionManagementPage.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSecurity&setupid = SessionManagementPage"
 		},
 		"setup.singleSignOnSettings": {
 			"lightning": "/lightning/setup/SingleSignOn/home",
-			"classic": "/_ui/identity/saml/SingleSignOnSettingsUi/d?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSecurity&setupid=SingleSignOn"
+			"classic": "/_ui/identity/saml/SingleSignOnSettingsUi/d?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSecurity&setupid = SingleSignOn"
 		},
 		"setup.identityProvider": {
 			"lightning": "/lightning/setup/IdpPage/home",
-			"classic": "/setup/secur/idp/IdpPage.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSecurity&setupid=IdpPage"
+			"classic": "/setup/secur/idp/IdpPage.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSecurity&setupid = IdpPage"
 		},
 		"setup.viewSetupAuditTrail": {
 			"lightning": "/lightning/setup/SecurityEvents/home",
-			"classic": "/setup/org/orgsetupaudit.jsp?setupid=SecurityEvents&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSecurity"
+			"classic": "/setup/org/orgsetupaudit.jsp?setupid = SecurityEvents&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSecurity"
 		},
 		"setup.delegatedAdministration": {
 			"lightning": "/lightning/setup/DelegateGroups/home",
-			"classic": "/ui/setup/user/DelegateGroupListPage?setupid=DelegateGroups&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSecurity"
+			"classic": "/ui/setup/user/DelegateGroupListPage?setupid = DelegateGroups&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSecurity"
 		},
 		"setup.remoteSiteSettings": {
 			"lightning": "/lightning/setup/SecurityRemoteProxy/home",
-			"classic": "/0rp?spl1=1&setupid=SecurityRemoteProxy&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSecurity"
+			"classic": "/0rp?spl1 = 1&setupid = SecurityRemoteProxy&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSecurity"
 		},
 		"setup.cspTrustedSites": {
 			"lightning": "/lightning/setup/SecurityCspTrustedSite/home",
-			"classic": "/08y?spl1=1&setupid=SecurityCspTrustedSite&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSecurity"
+			"classic": "/08y?spl1 = 1&setupid = SecurityCspTrustedSite&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSecurity"
 		},
 		"setup.namedCredentials": {
 			"lightning": "/lightning/setup/NamedCredential/home",
-			"classic": "/0XA?setupid=NamedCredential&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSecurity"
+			"classic": "/0XA?setupid = NamedCredential&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSecurity"
 		},
 		"setup.domains": {
 			"lightning": "/lightning/setup/DomainNames/home",
-			"classic": "/0I4?setupid=DomainNames&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDomains"
+			"classic": "/0I4?setupid = DomainNames&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDomains"
 		},
 		"setup.customURLs": {
 			"lightning": "/lightning/setup/DomainSites/home",
-			"classic": "/0Jf?setupid=DomainSites&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDomains"
+			"classic": "/0Jf?setupid = DomainSites&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDomains"
 		},
 		"setup.myDomain": {
 			"lightning": "/lightning/setup/OrgDomain/home",
-			"classic": "/domainname/DomainName.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDomains&setupid=OrgDomain"
+			"classic": "/domainname/DomainName.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDomains&setupid = OrgDomain"
 		},
 		"setup.translationLanguageSettings": {
 			"lightning": "/lightning/setup/LabelWorkbenchSetup/home",
-			"classic": "/01h?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DLabelWorkbench&setupid=LabelWorkbenchSetup"
+			"classic": "/01h?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DLabelWorkbench&setupid = LabelWorkbenchSetup"
 		},
 		"setup.translate": {
 			"lightning": "/lightning/setup/LabelWorkbenchTranslate/home",
-			"classic": "/i18n/TranslationWorkbench.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DLabelWorkbench&setupid=LabelWorkbenchTranslate"
+			"classic": "/i18n/TranslationWorkbench.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DLabelWorkbench&setupid = LabelWorkbenchTranslate"
 		},
 		"setup.override": {
 			"lightning": "/lightning/setup/LabelWorkbenchOverride/home",
-			"classic": "/i18n/LabelWorkbenchOverride.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DLabelWorkbench&setupid=LabelWorkbenchOverride"
+			"classic": "/i18n/LabelWorkbenchOverride.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DLabelWorkbench&setupid = LabelWorkbenchOverride"
 		},
 		"setup.export": {
 			"lightning": "/lightning/setup/LabelWorkbenchExport/home",
-			"classic": "/i18n/TranslationExport.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DLabelWorkbench&setupid=LabelWorkbenchExport"
+			"classic": "/i18n/TranslationExport.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DLabelWorkbench&setupid = LabelWorkbenchExport"
 		},
 		"setup.import": {
 			"lightning": "/lightning/setup/LabelWorkbenchImport/home",
-			"classic": "/i18n/TranslationImport.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DLabelWorkbench&setupid=LabelWorkbenchImport"
+			"classic": "/i18n/TranslationImport.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DLabelWorkbench&setupid = LabelWorkbenchImport"
 		},
 		"setup.duplicateErrorLogs": {
 			"lightning": "/lightning/setup/DuplicateErrorLog/home",
-			"classic": "/075?setupid=DuplicateErrorLog&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDuplicateManagement"
+			"classic": "/075?setupid = DuplicateErrorLog&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDuplicateManagement"
 		},
 		"setup.duplicateRules": {
 			"lightning": "/lightning/setup/DuplicateRules/home",
-			"classic": "/0Bm?setupid=DuplicateRules&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDuplicateManagement"
+			"classic": "/0Bm?setupid = DuplicateRules&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDuplicateManagement"
 		},
 		"setup.matchingRules": {
 			"lightning": "/lightning/setup/MatchingRules/home",
-			"classic": "/0JD?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDuplicateManagement&setupid=MatchingRules"
+			"classic": "/0JD?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDuplicateManagement&setupid = MatchingRules"
 		},
 		"setup.dataIntegrationRules": {
 			"lightning": "/lightning/setup/CleanRules/home",
-			"classic": "/07i?setupid=CleanRules&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDataManagement"
+			"classic": "/07i?setupid = CleanRules&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDataManagement"
 		},
 		"setup.dataIntegrationMetrics": {
 			"lightning": "/lightning/setup/XCleanVitalsUi/home",
-			"classic": "/_ui/xclean/ui/XCleanVitalsUi?setupid=XCleanVitalsUi&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDataManagement"
+			"classic": "/_ui/xclean/ui/XCleanVitalsUi?setupid = XCleanVitalsUi&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDataManagement"
 		},
 		"setup.reportingSnapshots": {
 			"lightning": "/lightning/setup/AnalyticSnapshots/home",
-			"classic": "/_ui/analytics/jobs/AnalyticSnapshotSplashUi?setupid=AnalyticSnapshots&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDataManagement"
+			"classic": "/_ui/analytics/jobs/AnalyticSnapshotSplashUi?setupid = AnalyticSnapshots&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDataManagement"
 		},
 		"setup.dataImportWizard": {
 			"lightning": "/lightning/setup/DataManagementDataImporter/home",
-			"classic": "/ui/setup/dataimporter/DataImporterAdminLandingPage?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDataManagement&setupid=DataManagementDataImporter"
+			"classic": "/ui/setup/dataimporter/DataImporterAdminLandingPage?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDataManagement&setupid = DataManagementDataImporter"
 		},
 		"setup.salesforceNavigation": {
 			"lightning": "/lightning/setup/ProjectOneAppMenu/home",
-			"classic": "/setup/salesforce1AppMenu.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DMobileAdministration&setupid=ProjectOneAppMenu"
+			"classic": "/setup/salesforce1AppMenu.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DMobileAdministration&setupid = ProjectOneAppMenu"
 		},
 		"setup.salesforceSettings": {
 			"lightning": "/lightning/setup/Salesforce1Settings/home",
-			"classic": "/mobile/mobileadmin/settingsMovedToConnectedApps.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSalesforce1&setupid=Salesforce1Settings"
+			"classic": "/mobile/mobileadmin/settingsMovedToConnectedApps.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSalesforce1&setupid = Salesforce1Settings"
 		},
 		"setup.salesforceBranding": {
 			"lightning": "/lightning/setup/Salesforce1Branding/home",
-			"classic": "/branding/setup/s1Branding.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSalesforce1&setupid=Salesforce1Branding"
+			"classic": "/branding/setup/s1Branding.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSalesforce1&setupid = Salesforce1Branding"
 		},
 		"setup.outlookConfigurations": {
 			"lightning": "/lightning/setup/EmailConfigurations/home",
-			"classic": "/063?Type=E&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDesktopAdministration&setupid=EmailConfigurations"
+			"classic": "/063?Type = E&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDesktopAdministration&setupid = EmailConfigurations"
 		},
 		"setup.emailToSalesforce": {
 			"lightning": "/lightning/setup/EmailToSalesforce/home",
-			"classic": "/email-admin/services/emailToSalesforceOrgSetup.apexp?mode=detail&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DEmailAdmin&setupid=EmailToSalesforce"
+			"classic": "/email-admin/services/emailToSalesforceOrgSetup.apexp?mode = detail&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DEmailAdmin&setupid = EmailToSalesforce"
 		},
 		"setup.apexExceptionEmail": {
 			"lightning": "/lightning/setup/ApexExceptionEmail/home",
-			"classic": "/apexpages/setup/apexExceptionEmail.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DEmailAdmin&setupid=ApexExceptionEmail"
+			"classic": "/apexpages/setup/apexExceptionEmail.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DEmailAdmin&setupid = ApexExceptionEmail"
 		},
 		"setup.renameTabsAndLabels": {
 			"lightning": "/lightning/setup/RenameTab/home",
-			"classic": "/ui/setup/RenameTabPage?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DTab&setupid=RenameTab"
+			"classic": "/ui/setup/RenameTabPage?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DTab&setupid = RenameTab"
 		},
 		"setup.mapsAndLocationSettings": {
 			"lightning": "/lightning/setup/MapsAndLocationServicesSettings/home",
-			"classic": "/maps/mapsAndLocationSvcSettings.apexp?setupid=MapsAndLocationServicesSettings&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DMapsAndLocationServices"
+			"classic": "/maps/mapsAndLocationSvcSettings.apexp?setupid = MapsAndLocationServicesSettings&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DMapsAndLocationServices"
 		},
 		"setup.taskFields": {
 			"lightning": "/lightning/setup/ObjectManager/Task/FieldsAndRelationships/view",
-			"classic": "/p/setup/layout/LayoutFieldList?type=Task&setupid=TaskFields&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity"
+			"classic": "/p/setup/layout/LayoutFieldList?type = Task&setupid = TaskFields&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity"
 		},
 		"setup.taskValidationRules": {
 			"lightning": "/lightning/setup/ObjectManager/Task/ValidationRules/view",
-			"classic": "/_ui/common/config/entity/ValidationFormulaListUI/d?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity&tableEnumOrId=Task&setupid=TaskValidations"
+			"classic": "/_ui/common/config/entity/ValidationFormulaListUI/d?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity&tableEnumOrId = Task&setupid = TaskValidations"
 		},
 		"setup.taskTriggers": {
 			"lightning": "/lightning/setup/ObjectManager/Task/Triggers/view",
-			"classic": "/p/setup/layout/ApexTriggerList?type=Task&setupid=TaskTriggers&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity"
+			"classic": "/p/setup/layout/ApexTriggerList?type = Task&setupid = TaskTriggers&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity"
 		},
 		"setup.taskButtons,Links,AndActions": {
 			"lightning": "/lightning/setup/ObjectManager/Task/ButtonsLinksActions/view",
-			"classic": "/p/setup/link/ActionButtonLinkList?pageName=Task&type=Task&setupid=TaskLinks&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity"
+			"classic": "/p/setup/link/ActionButtonLinkList?pageName = Task&type = Task&setupid = TaskLinks&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity"
 		},
 		"setup.taskPageLayouts": {
 			"lightning": "/lightning/setup/ObjectManager/Task/PageLayouts/view",
-			"classic": "/ui/setup/layout/PageLayouts?type=Task&setupid=TaskLayouts&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity"
+			"classic": "/ui/setup/layout/PageLayouts?type = Task&setupid = TaskLayouts&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity"
 		},
 		"setup.taskFieldSets": {
 			"lightning": "/lightning/setup/ObjectManager/Task/FieldSets/view",
-			"classic": "/_ui/common/config/entity/FieldSetListUI/d?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity&tableEnumOrId=Task&setupid=TaskFieldSets"
+			"classic": "/_ui/common/config/entity/FieldSetListUI/d?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity&tableEnumOrId = Task&setupid = TaskFieldSets"
 		},
 		"setup.taskCompactLayouts": {
 			"lightning": "/lightning/setup/ObjectManager/Task/CompactLayouts/view",
-			"classic": "/_ui/common/config/compactlayout/CompactLayoutListUi/d?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity&type=Task&setupid=TaskCompactLayouts"
+			"classic": "/_ui/common/config/compactlayout/CompactLayoutListUi/d?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity&type = Task&setupid = TaskCompactLayouts"
 		},
 		"setup.taskRecordTypes": {
 			"lightning": "/lightning/setup/ObjectManager/Task/RecordTypes/view",
-			"classic": "/ui/setup/rectype/RecordTypes?type=Task&setupid=TaskRecords&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity"
+			"classic": "/ui/setup/rectype/RecordTypes?type = Task&setupid = TaskRecords&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity"
 		},
 		"setup.taskLimits": {
 			"lightning": "/lightning/setup/ObjectManager/Task/Limits/view",
-			"classic": "/p/setup/custent/EntityLimits?type=Task&setupid=TaskLimits&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity"
+			"classic": "/p/setup/custent/EntityLimits?type = Task&setupid = TaskLimits&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity"
 		},
 		"setup.eventFields": {
 			"lightning": "/lightning/setup/ObjectManager/Event/FieldsAndRelationships/view",
-			"classic": "/p/setup/layout/LayoutFieldList?type=Event&setupid=EventFields&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity"
+			"classic": "/p/setup/layout/LayoutFieldList?type = Event&setupid = EventFields&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity"
 		},
 		"setup.eventValidationRules": {
 			"lightning": "/lightning/setup/ObjectManager/Event/ValidationRules/view",
-			"classic": "/_ui/common/config/entity/ValidationFormulaListUI/d?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity&tableEnumOrId=Event&setupid=EventValidations"
+			"classic": "/_ui/common/config/entity/ValidationFormulaListUI/d?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity&tableEnumOrId = Event&setupid = EventValidations"
 		},
 		"setup.eventTriggers": {
 			"lightning": "/lightning/setup/ObjectManager/Event/Triggers/view",
-			"classic": "/p/setup/layout/ApexTriggerList?type=Event&setupid=EventTriggers&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity"
+			"classic": "/p/setup/layout/ApexTriggerList?type = Event&setupid = EventTriggers&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity"
 		},
 		"setup.eventPageLayouts": {
 			"lightning": "/lightning/setup/ObjectManager/Event/PageLayouts/view",
-			"classic": "/ui/setup/layout/PageLayouts?type=Event&setupid=EventLayouts&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity"
+			"classic": "/ui/setup/layout/PageLayouts?type = Event&setupid = EventLayouts&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity"
 		},
 		"setup.eventFieldSets": {
 			"lightning": "/lightning/setup/ObjectManager/Event/FieldSets/view",
-			"classic": "/_ui/common/config/entity/FieldSetListUI/d?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity&tableEnumOrId=Event&setupid=EventFieldSets"
+			"classic": "/_ui/common/config/entity/FieldSetListUI/d?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity&tableEnumOrId = Event&setupid = EventFieldSets"
 		},
 		"setup.eventCompactLayouts": {
 			"lightning": "/lightning/setup/ObjectManager/Event/CompactLayouts/view",
-			"classic": "/_ui/common/config/compactlayout/CompactLayoutListUi/d?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity&type=Event&setupid=EventCompactLayouts"
+			"classic": "/_ui/common/config/compactlayout/CompactLayoutListUi/d?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity&type = Event&setupid = EventCompactLayouts"
 		},
 		"setup.eventRecordTypes": {
 			"lightning": "/lightning/setup/ObjectManager/Event/RecordTypes/view",
-			"classic": "/ui/setup/rectype/RecordTypes?type=Event&setupid=EventRecords&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity"
+			"classic": "/ui/setup/rectype/RecordTypes?type = Event&setupid = EventRecords&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity"
 		},
 		"setup.eventLimits": {
 			"lightning": "/lightning/setup/ObjectManager/Event/Limits/view",
-			"classic": "/p/setup/custent/EntityLimits?type=Event&setupid=EventLimits&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity"
+			"classic": "/p/setup/custent/EntityLimits?type = Event&setupid = EventLimits&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity"
 		},
 		"setup.activityCustomFields": {
 			"lightning": "/lightning/setup/ObjectManager/Activity/FieldsAndRelationships/view",
-			"classic": "/p/setup/layout/LayoutFieldList?type=Activity&setupid=ActivityFields&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity"
+			"classic": "/p/setup/layout/LayoutFieldList?type = Activity&setupid = ActivityFields&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity"
 		},
 		"setup.publicCalendarsAndResources": {
 			"lightning": "/lightning/setup/Calendars/home",
-			"classic": "/023/s?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity&setupid=Calendars"
+			"classic": "/023/s?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity&setupid = Calendars"
 		},
 		"setup.activitySettings": {
 			"lightning": "/lightning/setup/HomeActivitiesSetupPage/home",
-			"classic": "/setup/activitiesSetupPage.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity&setupid=HomeActivitiesSetupPage"
+			"classic": "/setup/activitiesSetupPage.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DActivity&setupid = HomeActivitiesSetupPage"
 		},
 		"setup.autoAssociationSettings": {
 			"lightning": "/lightning/setup/AutoAssociationSettings/home",
-			"classic": "/p/camp/CampaignInfluenceAutoAssociationSetupUi/d?ftype=CampaignInfluence&setupid=AutoAssociationSettings&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCampaignInfluence2"
+			"classic": "/p/camp/CampaignInfluenceAutoAssociationSetupUi/d?ftype = CampaignInfluence&setupid = AutoAssociationSettings&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCampaignInfluence2"
 		},
 		"setup.campaignInfluenceSettings": {
 			"lightning": "/lightning/setup/CampaignInfluenceSettings/home",
-			"classic": "/p/camp/CampaignInfluenceSetupUi/d?setupid=CampaignInfluenceSettings&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCampaignInfluence2"
+			"classic": "/p/camp/CampaignInfluenceSetupUi/d?setupid = CampaignInfluenceSettings&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCampaignInfluence2"
 		},
 		"setup.leadAssignmentRules": {
 			"lightning": "/lightning/setup/LeadRules/home",
-			"classic": "/setup/own/entityrulelist.jsp?rtype=1&entity=Lead&setupid=LeadRules&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DLead"
+			"classic": "/setup/own/entityrulelist.jsp?rtype = 1&entity = Lead&setupid = LeadRules&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DLead"
 		},
 		"setup.leadSettings": {
 			"lightning": "/lightning/setup/LeadSettings/home",
-			"classic": "/_ui/sales/lead/LeadSetup/d?setupid=LeadSettings&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DLead"
+			"classic": "/_ui/sales/lead/LeadSetup/d?setupid = LeadSettings&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DLead"
 		},
 		"setup.leadProcesses": {
 			"lightning": "/lightning/setup/LeadProcess/home",
-			"classic": "/setup/ui/bplist.jsp?id=00Q&setupid=LeadProcess&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DLead"
+			"classic": "/setup/ui/bplist.jsp?id = 00Q&setupid = LeadProcess&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DLead"
 		},
 		"setup.webToLead": {
 			"lightning": "/lightning/setup/LeadWebtoleads/home",
-			"classic": "/lead/leadcapture.jsp?setupid=LeadWebtoleads&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DLead"
+			"classic": "/lead/leadcapture.jsp?setupid = LeadWebtoleads&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DLead"
 		},
 		"setup.leadAutoResponseRules": {
 			"lightning": "/lightning/setup/LeadResponses/home",
-			"classic": "/setup/own/entityrulelist.jsp?rtype=4&entity=Lead&setupid=LeadResponses&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DLead"
+			"classic": "/setup/own/entityrulelist.jsp?rtype = 4&entity = Lead&setupid = LeadResponses&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DLead"
 		},
 		"setup.accountSettings": {
 			"lightning": "/lightning/setup/AccountSettings/home",
-			"classic": "/accounts/accountSetup.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DAccount&setupid=AccountSettings"
+			"classic": "/accounts/accountSetup.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DAccount&setupid = AccountSettings"
 		},
 		"setup.notesSettings": {
 			"lightning": "/lightning/setup/NotesSetupPage/home",
-			"classic": "/setup/notesSetupPage.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DNotes&setupid=NotesSetupPage"
+			"classic": "/setup/notesSetupPage.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DNotes&setupid = NotesSetupPage"
 		},
 		"setup.contactRolesOnOpportunities": {
 			"lightning": "/lightning/setup/OpportunityRoles/home",
-			"classic": "/setup/ui/picklist_masterdetail.jsp?tid=00K&pt=11&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DOpportunity&setupid=OpportunityRoles"
+			"classic": "/setup/ui/picklist_masterdetail.jsp?tid = 00K&pt = 11&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DOpportunity&setupid = OpportunityRoles"
 		},
 		"setup.salesProcesses": {
 			"lightning": "/lightning/setup/OpportunityProcess/home",
-			"classic": "/setup/ui/bplist.jsp?id=006&setupid=OpportunityProcess&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DOpportunity"
+			"classic": "/setup/ui/bplist.jsp?id = 006&setupid = OpportunityProcess&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DOpportunity"
 		},
 		"setup.opportunitySettings": {
 			"lightning": "/lightning/setup/OpportunitySettings/home",
-			"classic": "/setup/opp/oppSettings.jsp?setupid=OpportunitySettings&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DOpportunity"
+			"classic": "/setup/opp/oppSettings.jsp?setupid = OpportunitySettings&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DOpportunity"
 		},
 		"setup.pathSettings": {
 			"lightning": "/lightning/setup/PathAssistantSetupHome/home",
-			"classic": "/ui/setup/pathassistant/PathAssistantSetupPage?setupid=PathAssistantSetupHome&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DPathAssistant"
+			"classic": "/ui/setup/pathassistant/PathAssistantSetupPage?setupid = PathAssistantSetupHome&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DPathAssistant"
 		},
 		"setup.forecastsSettings": {
 			"lightning": "/lightning/setup/Forecasting3Settings/home",
-			"classic": "/_ui/sales/forecasting/ui/ForecastingSettingsPageAura?setupid=Forecasting3Settings&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DForecasting3"
+			"classic": "/_ui/sales/forecasting/ui/ForecastingSettingsPageAura?setupid = Forecasting3Settings&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DForecasting3"
 		},
 		"setup.forecastsHierarchy": {
 			"lightning": "/lightning/setup/Forecasting3Role/home",
-			"classic": "/ui/setup/forecasting/ForecastingRolePage?setupid=Forecasting3Role&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DForecasting3"
+			"classic": "/ui/setup/forecasting/ForecastingRolePage?setupid = Forecasting3Role&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DForecasting3"
 		},
 		"setup.contactRolesOnCases": {
 			"lightning": "/lightning/setup/CaseContactRoles/home",
-			"classic": "/setup/ui/picklist_masterdetail.jsp?tid=03j&pt=45&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCase&setupid=CaseContactRoles"
+			"classic": "/setup/ui/picklist_masterdetail.jsp?tid = 03j&pt = 45&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCase&setupid = CaseContactRoles"
 		},
 		"setup.caseAssignmentRules": {
 			"lightning": "/lightning/setup/CaseRules/home",
-			"classic": "/setup/own/entityrulelist.jsp?rtype=1&entity=Case&setupid=CaseRules&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCase"
+			"classic": "/setup/own/entityrulelist.jsp?rtype = 1&entity = Case&setupid = CaseRules&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCase"
 		},
 		"setup.escalationRules": {
 			"lightning": "/lightning/setup/CaseEscRules/home",
-			"classic": "/setup/own/entityrulelist.jsp?rtype=3&entity=Case&setupid=CaseEscRules&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCase"
+			"classic": "/setup/own/entityrulelist.jsp?rtype = 3&entity = Case&setupid = CaseEscRules&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCase"
 		},
 		"setup.supportProcesses": {
 			"lightning": "/lightning/setup/CaseProcess/home",
-			"classic": "/setup/ui/bplist.jsp?id=500&setupid=CaseProcess&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCase"
+			"classic": "/setup/ui/bplist.jsp?id = 500&setupid = CaseProcess&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCase"
 		},
 		"setup.supportSettings": {
 			"lightning": "/lightning/setup/CaseSettings/home",
-			"classic": "/_ui/support/organization/SupportOrganizationSetupUi/d?setupid=CaseSettings&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCase"
+			"classic": "/_ui/support/organization/SupportOrganizationSetupUi/d?setupid = CaseSettings&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCase"
 		},
 		"setup.caseAutoResponseRules": {
 			"lightning": "/lightning/setup/CaseResponses/home",
-			"classic": "/setup/own/entityrulelist.jsp?rtype=4&entity=Case&setupid=CaseResponses&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCase"
+			"classic": "/setup/own/entityrulelist.jsp?rtype = 4&entity = Case&setupid = CaseResponses&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCase"
 		},
 		"setup.emailToCase": {
 			"lightning": "/lightning/setup/EmailToCase/home",
-			"classic": "/ui/setup/email/EmailToCaseSplashPage?setupid=EmailToCase&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCase"
+			"classic": "/ui/setup/email/EmailToCaseSplashPage?setupid = EmailToCase&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCase"
 		},
 		"setup.feedFilters": {
 			"lightning": "/lightning/setup/FeedFilterDefinitions/home",
-			"classic": "/_ui/common/feedfilter/setup/ui/FeedFilterListPage/d?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCase&context=Case&setupid=FeedFilterDefinitions"
+			"classic": "/_ui/common/feedfilter/setup/ui/FeedFilterListPage/d?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCase&context = Case&setupid = FeedFilterDefinitions"
 		},
 		"setup.caseTeamRoles": {
 			"lightning": "/lightning/setup/CaseTeamRoles/home",
-			"classic": "/0B7?kp=500&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCaseTeams&setupid=CaseTeamRoles"
+			"classic": "/0B7?kp = 500&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCaseTeams&setupid = CaseTeamRoles"
 		},
 		"setup.predefinedCaseTeams": {
 			"lightning": "/lightning/setup/CaseTeamTemplates/home",
-			"classic": "/0B4?kp=500&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCaseTeams&setupid=CaseTeamTemplates"
+			"classic": "/0B4?kp = 500&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCaseTeams&setupid = CaseTeamTemplates"
 		},
 		"setup.caseCommentTriggers": {
 			"lightning": "/lightning/setup/CaseCommentTriggers/home",
-			"classic": "/p/setup/layout/ApexTriggerList?type=CaseComment&setupid=CaseCommentTriggers&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCaseComment"
+			"classic": "/p/setup/layout/ApexTriggerList?type = CaseComment&setupid = CaseCommentTriggers&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCaseComment"
 		},
 		"setup.webToCase": {
 			"lightning": "/lightning/setup/CaseWebtocase/home",
-			"classic": "/cases/webtocasesetup.jsp?setupid=CaseWebtocase&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSelfService"
+			"classic": "/cases/webtocasesetup.jsp?setupid = CaseWebtocase&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSelfService"
 		},
 		"setup.webToCaseHTMLGenerator": {
 			"lightning": "/lightning/setup/CaseWebToCaseHtmlGenerator/home",
-			"classic": "/_ui/common/config/entity/WebToCaseUi/e?setupid=CaseWebToCaseHtmlGenerator&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSelfService"
+			"classic": "/_ui/common/config/entity/WebToCaseUi/e?setupid = CaseWebToCaseHtmlGenerator&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSelfService"
 		},
 		"setup.macroSettings": {
 			"lightning": "/lightning/setup/MacroSettings/home",
-			"classic": "/_ui/support/macros/MacroSettings/d?setupid=MacroSettings&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DMacro"
+			"classic": "/_ui/support/macros/MacroSettings/d?setupid = MacroSettings&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DMacro"
 		},
 		"setup.contactRolesOnContracts": {
 			"lightning": "/lightning/setup/ContractContactRoles/home",
-			"classic": "/setup/ui/picklist_masterdetail.jsp?tid=02a&pt=39&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DContract&setupid=ContractContactRoles"
+			"classic": "/setup/ui/picklist_masterdetail.jsp?tid = 02a&pt = 39&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DContract&setupid = ContractContactRoles"
 		},
 		"setup.contractSettings": {
 			"lightning": "/lightning/setup/ContractSettings/home",
-			"classic": "/ctrc/contractsettings.jsp?setupid=ContractSettings&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DContract"
+			"classic": "/ctrc/contractsettings.jsp?setupid = ContractSettings&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DContract"
 		},
 		"setup.orderSettings": {
 			"lightning": "/lightning/setup/OrderSettings/home",
-			"classic": "/oe/orderSettings.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DOrder&setupid=OrderSettings"
+			"classic": "/oe/orderSettings.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DOrder&setupid = OrderSettings"
 		},
 		"setup.productSchedulesSettings": {
 			"lightning": "/lightning/setup/Product2ScheduleSetup/home",
-			"classic": "/setup/pbk/orgAnnuityEnable.jsp?setupid=Product2ScheduleSetup&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DProducts"
+			"classic": "/setup/pbk/orgAnnuityEnable.jsp?setupid = Product2ScheduleSetup&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DProducts"
 		},
 		"setup.productSettings": {
 			"lightning": "/lightning/setup/Product2Settings/home",
-			"classic": "/setup/pbk/productSettings.jsp?setupid=Product2Settings&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DProducts"
+			"classic": "/setup/pbk/productSettings.jsp?setupid = Product2Settings&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DProducts"
 		},
 		"setup.assetFiles": {
 			"lightning": "/lightning/setup/ContentAssets/home",
-			"classic": "/03S?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSalesforceFiles&setupid=ContentAssets"
+			"classic": "/03S?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DSalesforceFiles&setupid = ContentAssets"
 		},
 		"setup.chatterSettings": {
 			"lightning": "/lightning/setup/CollaborationSettings/home",
-			"classic": "/collaboration/collaborationSettings.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCollaboration&setupid=CollaborationSettings"
+			"classic": "/collaboration/collaborationSettings.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCollaboration&setupid = CollaborationSettings"
 		},
 		"setup.publisherLayouts": {
 			"lightning": "/lightning/setup/GlobalPublisherLayouts/home",
-			"classic": "/ui/setup/layout/PageLayouts?type=Global&setupid=GlobalPublisherLayouts&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DGlobalActions"
+			"classic": "/ui/setup/layout/PageLayouts?type = Global&setupid = GlobalPublisherLayouts&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DGlobalActions"
 		},
 		"setup.feedTracking": {
 			"lightning": "/lightning/setup/FeedTracking/home",
-			"classic": "/feeds/feedTracking.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCollaboration&setupid=FeedTracking"
+			"classic": "/feeds/feedTracking.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCollaboration&setupid = FeedTracking"
 		},
 		"setup.emailSettings": {
 			"lightning": "/lightning/setup/ChatterEmailSettings/home",
-			"classic": "/_ui/core/chatter/email/ui/ChatterEmailSettings/e?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCollaboration&setupid=ChatterEmailSettings"
+			"classic": "/_ui/core/chatter/email/ui/ChatterEmailSettings/e?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCollaboration&setupid = ChatterEmailSettings"
 		},
 		"setup.inboundChangeSets": {
 			"lightning": "/lightning/setup/InboundChangeSet/home",
-			"classic": "/changemgmt/listInboundChangeSet.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDeploy&setupid=InboundChangeSet"
+			"classic": "/changemgmt/listInboundChangeSet.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDeploy&setupid = InboundChangeSet"
 		},
 		"setup.outboundChangeSets": {
 			"lightning": "/lightning/setup/OutboundChangeSet/home",
-			"classic": "/changemgmt/listOutboundChangeSet.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDeploy&setupid=OutboundChangeSet"
+			"classic": "/changemgmt/listOutboundChangeSet.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDeploy&setupid = OutboundChangeSet"
 		},
 		"setup.feedItemLayouts": {
 			"lightning": "/lightning/setup/FeedItemLayouts/home",
-			"classic": "/ui/setup/layout/PageLayouts?type=FeedItem&setupid=FeedItemLayouts&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DFeedItemActionConfig"
+			"classic": "/ui/setup/layout/PageLayouts?type = FeedItem&setupid = FeedItemLayouts&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DFeedItemActionConfig"
 		},
 		"setup.feedItemActions": {
 			"lightning": "/lightning/setup/FeedItemActions/home",
-			"classic": "/p/setup/link/ActionButtonLinkList?pageName=FeedItem&type=FeedItem&setupid=FeedItemActions&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DFeedItemActionConfig"
+			"classic": "/p/setup/link/ActionButtonLinkList?pageName = FeedItem&type = FeedItem&setupid = FeedItemActions&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DFeedItemActionConfig"
 		},
 		"setup.feedCommentTriggers": {
 			"lightning": "/lightning/setup/FeedCommentTriggers/home",
-			"classic": "/p/setup/layout/ApexTriggerList?type=FeedComment&setupid=FeedCommentTriggers&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DFeedTriggers"
+			"classic": "/p/setup/layout/ApexTriggerList?type = FeedComment&setupid = FeedCommentTriggers&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DFeedTriggers"
 		},
 		"setup.feedItemTriggers": {
 			"lightning": "/lightning/setup/FeedItemTriggers/home",
-			"classic": "/p/setup/layout/ApexTriggerList?type=FeedItem&setupid=FeedItemTriggers&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DFeedTriggers"
+			"classic": "/p/setup/layout/ApexTriggerList?type = FeedItem&setupid = FeedItemTriggers&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DFeedTriggers"
 		},
 		"setup.groupTriggers": {
 			"lightning": "/lightning/setup/CollaborationGroupTriggers/home",
-			"classic": "/p/setup/layout/ApexTriggerList?type=CollaborationGroup&setupid=CollaborationGroupTriggers&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCollaborationGroup"
+			"classic": "/p/setup/layout/ApexTriggerList?type = CollaborationGroup&setupid = CollaborationGroupTriggers&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCollaborationGroup"
 		},
 		"setup.groupMemberTriggers": {
 			"lightning": "/lightning/setup/CollaborationGroupMemberTriggers/home",
-			"classic": "/p/setup/layout/ApexTriggerList?type=CollaborationGroupMember&setupid=CollaborationGroupMemberTriggers&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCollaborationGroup"
+			"classic": "/p/setup/layout/ApexTriggerList?type = CollaborationGroupMember&setupid = CollaborationGroupMemberTriggers&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCollaborationGroup"
 		},
 		"setup.groupRecordTriggers": {
 			"lightning": "/lightning/setup/CollaborationGroupRecordTriggers/home",
-			"classic": "/p/setup/layout/ApexTriggerList?type=CollaborationGroupRecord&setupid=CollaborationGroupRecordTriggers&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCollaborationGroup"
+			"classic": "/p/setup/layout/ApexTriggerList?type = CollaborationGroupRecord&setupid = CollaborationGroupRecordTriggers&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCollaborationGroup"
 		},
 		"setup.groupLayouts": {
 			"lightning": "/lightning/setup/CollaborationGroupLayouts/home",
-			"classic": "/ui/setup/layout/PageLayouts?type=CollaborationGroup&setupid=CollaborationGroupLayouts&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCollaborationGroup"
+			"classic": "/ui/setup/layout/PageLayouts?type = CollaborationGroup&setupid = CollaborationGroupLayouts&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DCollaborationGroup"
 		},
 		"setup.topicTriggers": {
 			"lightning": "/lightning/setup/TopicTriggers/home",
-			"classic": "/p/setup/layout/ApexTriggerList?type=Topic&setupid=TopicTriggers&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DTopic"
+			"classic": "/p/setup/layout/ApexTriggerList?type = Topic&setupid = TopicTriggers&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DTopic"
 		},
 		"setup.topicAssignmentTriggers": {
 			"lightning": "/lightning/setup/TopicAssigmentTriggers/home",
-			"classic": "/p/setup/layout/ApexTriggerList?type=TopicAssignment&setupid=TopicAssigmentTriggers&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DTopic"
+			"classic": "/p/setup/layout/ApexTriggerList?type = TopicAssignment&setupid = TopicAssigmentTriggers&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DTopic"
 		},
 		"setup.enhancedEmail": {
 			"lightning": "/lightning/setup/EnhancedEmail/home",
-			"classic": "/ui/setup/email/EnhancedEmailSetupPage?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DEmailExperience&setupid=EnhancedEmail"
+			"classic": "/ui/setup/email/EnhancedEmailSetupPage?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DEmailExperience&setupid = EnhancedEmail"
 		},
 		"setup.individualSettings": {
 			"lightning": "/lightning/setup/IndividualSettings/home",
-			"classic": "/individual/individualSetup.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DIndividual&setupid=IndividualSettings"
+			"classic": "/individual/individualSetup.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DIndividual&setupid = IndividualSettings"
 		},
 		"setup.customLabels": {
 			"lightning": "/lightning/setup/ExternalStrings/home",
-			"classic": "/101?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDevTools&setupid=ExternalStrings"
+			"classic": "/101?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDevTools&setupid = ExternalStrings"
 		},
 		"setup.bigObjects": {
 			"lightning": "/lightning/setup/BigObjects/home",
-			"classic": "/p/setup/custent/BigObjectsPage?setupid=BigObjects&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDevTools"
+			"classic": "/p/setup/custent/BigObjectsPage?setupid = BigObjects&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDevTools"
 		},
 		"setup.picklistValueSets": {
 			"lightning": "/lightning/setup/Picklists/home",
-			"classic": "/_ui/platform/ui/schema/wizard/picklist/PicklistsPage?setupid=Picklists&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDevTools"
+			"classic": "/_ui/platform/ui/schema/wizard/picklist/PicklistsPage?setupid = Picklists&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDevTools"
 		},
 		"setup.reportTypes": {
 			"lightning": "/lightning/setup/CustomReportTypes/home",
-			"classic": "/070?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDevTools&setupid=CustomReportTypes"
+			"classic": "/070?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDevTools&setupid = CustomReportTypes"
 		},
 		"setup.tabs": {
 			"lightning": "/lightning/setup/CustomTabs/home",
-			"classic": "/setup/ui/customtabs.jsp?setupid=CustomTabs&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDevTools"
+			"classic": "/setup/ui/customtabs.jsp?setupid = CustomTabs&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDevTools"
 		},
 		"setup.globalActions": {
 			"lightning": "/lightning/setup/GlobalActions/home",
-			"classic": "/p/setup/link/ActionButtonLinkList?pageName=Global&type=Global&setupid=GlobalActionLinks&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DGlobalActions"
+			"classic": "/p/setup/link/ActionButtonLinkList?pageName = Global&type = Global&setupid = GlobalActionLinks&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DGlobalActions"
 		},
 		"setup.workflowRules": {
 			"lightning": "/lightning/setup/WorkflowRules/home",
-			"classic": "/_ui/core/workflow/WorkflowSplashUi?EntityId=WorkflowRule&setupid=WorkflowRules&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DWorkflow"
+			"classic": "/_ui/core/workflow/WorkflowSplashUi?EntityId = WorkflowRule&setupid = WorkflowRules&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DWorkflow"
 		},
 		"setup.approvalProcesses": {
 			"lightning": "/lightning/setup/ApprovalProcesses/home",
-			"classic": "/p/process/ProcessDefinitionSetup?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DWorkflow&setupid=ApprovalProcesses"
+			"classic": "/p/process/ProcessDefinitionSetup?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DWorkflow&setupid = ApprovalProcesses"
 		},
 		"setup.flows": {
 			"lightning": "/lightning/setup/Flows/home",
-			"classic": "/300?setupid=InteractionProcesses&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DWorkflow"
+			"classic": "/300?setupid = InteractionProcesses&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DWorkflow"
 		},
 		"setup.tasks": {
 			"lightning": "/lightning/setup/WorkflowTasks/home",
-			"classic": "/_ui/core/workflow/WorkflowSplashUi?EntityId=ActionTask&setupid=WorkflowTasks&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DWorkflow"
+			"classic": "/_ui/core/workflow/WorkflowSplashUi?EntityId = ActionTask&setupid = WorkflowTasks&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DWorkflow"
 		},
 		"setup.emailAlerts": {
 			"lightning": "/lightning/setup/WorkflowEmails/home",
-			"classic": "/_ui/core/workflow/WorkflowSplashUi?EntityId=ActionEmail&setupid=WorkflowEmails&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DWorkflow"
+			"classic": "/_ui/core/workflow/WorkflowSplashUi?EntityId = ActionEmail&setupid = WorkflowEmails&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DWorkflow"
 		},
 		"setup.fieldUpdates": {
 			"lightning": "/lightning/setup/WorkflowFieldUpdates/home",
-			"classic": "/_ui/core/workflow/WorkflowSplashUi?EntityId=ActionFieldUpdate&setupid=WorkflowFieldUpdates&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DWorkflow"
+			"classic": "/_ui/core/workflow/WorkflowSplashUi?EntityId = ActionFieldUpdate&setupid = WorkflowFieldUpdates&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DWorkflow"
 		},
 		"setup.outboundMessages": {
 			"lightning": "/lightning/setup/WorkflowOutboundMessaging/home",
-			"classic": "/ui/setup/outbound/WfOutboundStatusUi?setupid=WorkflowOmStatus&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DMonitoring"
+			"classic": "/ui/setup/outbound/WfOutboundStatusUi?setupid = WorkflowOmStatus&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DMonitoring"
 		},
 		"setup.sendActions": {
 			"lightning": "/lightning/setup/SendAction/home",
-			"classic": "/07V?setupid=SendAction&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DWorkflow"
+			"classic": "/07V?setupid = SendAction&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DWorkflow"
 		},
 		"setup.postTemplates": {
 			"lightning": "/lightning/setup/FeedTemplates/home",
-			"classic": "/07D?setupid=FeedTemplates&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DWorkflow"
+			"classic": "/07D?setupid = FeedTemplates&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DWorkflow"
 		},
 		"setup.processAutomationSettings": {
 			"lightning": "/lightning/setup/WorkflowSettings/home",
-			"classic": "/_ui/core/workflow/WorkflowSettingsUi?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DWorkflow&setupid=WorkflowSettings"
+			"classic": "/_ui/core/workflow/WorkflowSettingsUi?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DWorkflow&setupid = WorkflowSettings"
 		},
 		"setup.apexClasses": {
 			"lightning": "/lightning/setup/ApexClasses/home",
-			"classic": "/01p?retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate&setupid=ApexClasses"
+			"classic": "/01p?retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate&setupid = ApexClasses"
 		},
 		"setup.apexTriggers": {
 			"lightning": "/lightning/setup/ApexTriggers/home",
-			"classic": "/setup/build/allTriggers.apexp?retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate&setupid=ApexTriggers"
+			"classic": "/setup/build/allTriggers.apexp?retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate&setupid = ApexTriggers"
 		},
 		"setup.apexTestExecution": {
 			"lightning": "/lightning/setup/ApexTestQueue/home",
-			"classic": "/ui/setup/apex/ApexTestQueuePage?retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate&setupid=ApexTestQueue"
+			"classic": "/ui/setup/apex/ApexTestQueuePage?retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate&setupid = ApexTestQueue"
 		},
 		"setup.apexHammerTestResults": {
 			"lightning": "/lightning/setup/ApexHammerResultStatus/home",
-			"classic": "/ui/setup/apex/ApexHammerResultStatusLandingPage?retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate&setupid=ApexHammerResultStatus"
+			"classic": "/ui/setup/apex/ApexHammerResultStatusLandingPage?retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate&setupid = ApexHammerResultStatus"
 		},
 		"setup.api": {
 			"lightning": "/lightning/setup/WebServices/home",
-			"classic": "/ui/setup/sforce/WebServicesSetupPage?setupid=WebServices&retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate"
+			"classic": "/ui/setup/sforce/WebServicesSetupPage?setupid = WebServices&retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate"
 		},
 		"setup.visualforceComponents": {
 			"lightning": "/lightning/setup/ApexComponents/home",
-			"classic": "/apexpages/setup/listApexComponent.apexp?retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate&setupid=ApexComponents"
+			"classic": "/apexpages/setup/listApexComponent.apexp?retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate&setupid = ApexComponents"
 		},
 		"setup.changeDataCapture": {
 			"lightning": "/lightning/setup/CdcObjectEnablement/home",
-			"classic": "/ui/setup/cdc/CdcObjectEnablementPage?setupid=CdcObjectEnablement&retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate"
+			"classic": "/ui/setup/cdc/CdcObjectEnablementPage?setupid = CdcObjectEnablement&retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate"
 		},
 		"setup.customPermissions": {
 			"lightning": "/lightning/setup/CustomPermissions/home",
-			"classic": "/0CP?setupid=CustomPermissions&retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate"
+			"classic": "/0CP?setupid = CustomPermissions&retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate"
 		},
 		"setup.customMetadataTypes": {
 			"lightning": "/lightning/setup/CustomMetadata/home",
-			"classic": "/_ui/platform/ui/schema/wizard/entity/CustomMetadataTypeListPage?retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate&setupid=CustomMetadata"
+			"classic": "/_ui/platform/ui/schema/wizard/entity/CustomMetadataTypeListPage?retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate&setupid = CustomMetadata"
 		},
 		"setup.customSettings": {
 			"lightning": "/lightning/setup/CustomSettings/home",
-			"classic": "/setup/ui/listCustomSettings.apexp?retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate&setupid=CustomSettings"
+			"classic": "/setup/ui/listCustomSettings.apexp?retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate&setupid = CustomSettings"
 		},
 		"setup.devHub": {
 			"lightning": "/lightning/setup/DevHub/home",
-			"classic": "/ui/setup/sfdx/SomaSetupPage?setupid=DevHub&retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate"
+			"classic": "/ui/setup/sfdx/SomaSetupPage?setupid = DevHub&retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate"
 		},
 		"setup.lightningComponents": {
 			"lightning": "/lightning/setup/LightningComponentBundles/home",
-			"classic": "/ui/aura/impl/setup/LightningComponentListPage?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DLightningComponents&setupid=LightningComponentBundles"
+			"classic": "/ui/aura/impl/setup/LightningComponentListPage?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DLightningComponents&setupid = LightningComponentBundles"
 		},
 		"setup.debugMode": {
 			"lightning": "/lightning/setup/UserDebugModeSetup/home",
-			"classic": "/ui/aura/impl/setup/UserDebugModeSetupPage?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DLightningComponents&setupid=UserDebugModeSetup"
+			"classic": "/ui/aura/impl/setup/UserDebugModeSetupPage?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DLightningComponents&setupid = UserDebugModeSetup"
 		},
 		"setup.visualforcePages": {
 			"lightning": "/lightning/setup/ApexPages/home",
-			"classic": "/apexpages/setup/listApexPage.apexp?retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate&setupid=ApexPages"
+			"classic": "/apexpages/setup/listApexPage.apexp?retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate&setupid = ApexPages"
 		},
 		"setup.platformCache": {
 			"lightning": "/lightning/setup/PlatformCache/home",
-			"classic": "/0Er?setupid=PlatformCache&retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate"
+			"classic": "/0Er?setupid = PlatformCache&retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate"
 		},
 		"setup.sites": {
 			"lightning": "/lightning/setup/CustomDomain/home",
-			"classic": "/0DM/o?setupid=CustomDomain&retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate"
+			"classic": "/0DM/o?setupid = CustomDomain&retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate"
 		},
 		"setup.staticResources": {
 			"lightning": "/lightning/setup/StaticResources/home",
-			"classic": "/apexpages/setup/listStaticResource.apexp?retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate&setupid=StaticResources"
+			"classic": "/apexpages/setup/listStaticResource.apexp?retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate&setupid = StaticResources"
 		},
 		"setup.tools": {
 			"lightning": "/lightning/setup/ClientDevTools/home",
-			"classic": "/ui/setup/sforce/ClientDevToolsSetupPage?setupid=ClientDevTools&retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate"
+			"classic": "/ui/setup/sforce/ClientDevToolsSetupPage?setupid = ClientDevTools&retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate"
 		},
 		"setup.externalDataSources": {
 			"lightning": "/lightning/setup/ExternalDataSource/home",
-			"classic": "/0XC?setupid=ExternalDataSource&retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate"
+			"classic": "/0XC?setupid = ExternalDataSource&retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate"
 		},
 		"setup.externalObjects": {
 			"lightning": "/lightning/setup/ExternalObjects/home",
-			"classic": "/p/setup/custent/ExternalObjectsPage?setupid=ExternalObjects&retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate"
+			"classic": "/p/setup/custent/ExternalObjectsPage?setupid = ExternalObjects&retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate"
 		},
 		"setup.platformEvents": {
 			"lightning": "/lightning/setup/EventObjects/home",
-			"classic": "/p/setup/custent/EventObjectsPage?setupid=EventObjects&retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate"
+			"classic": "/p/setup/custent/EventObjectsPage?setupid = EventObjects&retURL=%2Fsetup%2Fintegratesplash.jsp%3Fsetupid%3DDevToolsIntegrate%26retURL%3D%252Fui%252Fsetup%252FSetup%253Fsetupid%253DDevToolsIntegrate"
 		},
 		"setup.lightningAppBuilder": {
 			"lightning": "/lightning/setup/FlexiPageList/home",
-			"classic": "/_ui/flexipage/ui/FlexiPageFilterListPage?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DStudio&setupid=FlexiPageList"
+			"classic": "/_ui/flexipage/ui/FlexiPageFilterListPage?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DStudio&setupid = FlexiPageList"
 		},
 		"setup.installedPackages": {
 			"lightning": "/lightning/setup/ImportedPackage/home",
-			"classic": "/0A3?setupid=ImportedPackage&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DStudio"
+			"classic": "/0A3?setupid = ImportedPackage&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DStudio"
 		},
 		"setup.packageUsage": {
 			"lightning": "/lightning/setup/PackageUsageSummary/home",
-			"classic": "/_ui/isvintel/ui/PackageUsageSummarySetupPage?setupid=PackageUsageSummary&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DStudio"
+			"classic": "/_ui/isvintel/ui/PackageUsageSummarySetupPage?setupid = PackageUsageSummary&retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DStudio"
 		},
 		"setup.appExchangeMarketplace": {
 			"lightning": "/lightning/setup/AppExchangeMarketplace/home",
-			"classic": "/packaging/viewAEMarketplace.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DStudio&setupid=AppExchangeMarketplace"
+			"classic": "/packaging/viewAEMarketplace.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DStudio&setupid = AppExchangeMarketplace"
 		},
 		"setup.sandboxes": {
 			"lightning": "/lightning/setup/DataManagementCreateTestInstance/home",
-			"classic": "/07E?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDeploy&setupid=DataManagementCreateTestInstance"
+			"classic": "/07E?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DDeploy&setupid = DataManagementCreateTestInstance"
 		},
 		"setup.scheduledJobs": {
 			"lightning": "/lightning/setup/ScheduledJobs/home",
-			"classic": "/08e?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DJobs&setupid=ScheduledJobs"
+			"classic": "/08e?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DJobs&setupid = ScheduledJobs"
 		},
 		"setup.apexJobs": {
 			"lightning": "/lightning/setup/AsyncApexJobs/home",
-			"classic": "/apexpages/setup/listAsyncApexJobs.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DJobs&setupid=AsyncApexJobs"
+			"classic": "/apexpages/setup/listAsyncApexJobs.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DJobs&setupid = AsyncApexJobs"
 		},
 		"setup.apexFlexQueue": {
 			"lightning": "/lightning/setup/ApexFlexQueue/home",
-			"classic": "/apexpages/setup/viewApexFlexQueue.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DJobs&setupid=ApexFlexQueue"
+			"classic": "/apexpages/setup/viewApexFlexQueue.apexp?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DJobs&setupid = ApexFlexQueue"
 		},
 		"setup.backgroundJobs": {
 			"lightning": "/lightning/setup/ParallelJobsStatus/home",
-			"classic": "/0Ys?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DJobs&setupid=ParallelJobsStatus"
+			"classic": "/0Ys?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DJobs&setupid = ParallelJobsStatus"
 		},
 		"setup.dataExport": {
 			"lightning": "/lightning/setup/DataManagementExport/home",
-			"classic": "chrome-extension://aodjmnfhjibkcdimpodiifdjnnncaafh/data-export.html?host=jstart.my.salesforce.com"
+			"classic": "chrome-extension://aodjmnfhjibkcdimpodiifdjnnncaafh/data-export.html?host = jstart.my.salesforce.com"
 		},
 		"setup.pausedFlows": {
 			"lightning": "/lightning/setup/Pausedflows/home",
@@ -1814,23 +1810,23 @@ export const forceNavigator = {
 		},
 		"setup.digitalExperienceAllSites": {
 			"lightning": "/lightning/setup/SetupNetworks/home",
-			"classic": "/_ui/networks/setup/SetupNetworksPage?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DNetworks&setupid=SetupNetworks"
+			"classic": "/_ui/networks/setup/SetupNetworksPage?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DNetworks&setupid = SetupNetworks"
 		},
 		"setup.digitalExperiencePages":{
 			"lightning": "/lightning/setup/CommunityFlexiPageList/home",
-			"classic": "/_ui/sites/setup/ui/CommunityFlexiPageFilterListPage?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DNetworks&setupid=CommunityFlexiPageList"
+			"classic": "/_ui/sites/setup/ui/CommunityFlexiPageFilterListPage?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DNetworks&setupid = CommunityFlexiPageList"
 		},
 		"setup.digitalExperienceSettings":{
 			"lightning": "/lightning/setup/NetworkSettings/home",
-			"classic": "/_ui/networks/setup/NetworkSettingsPage?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DNetworks&setupid=NetworkSettings"
+			"classic": "/_ui/networks/setup/NetworkSettingsPage?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DNetworks&setupid = NetworkSettings"
 		},
 		"setup.digitalExperienceTemplates":{
 			"lightning": "/lightning/setup/CommunityTemplateDefinitionList/home",
-			"classic": "/_ui/sites/setup/ui/CommunityTemplateDefinitionFilterListPage?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DNetworks&setupid=CommunityTemplateDefinitionList"
+			"classic": "/_ui/sites/setup/ui/CommunityTemplateDefinitionFilterListPage?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DNetworks&setupid = CommunityTemplateDefinitionList"
 		},
 		"setup.digitalExperienceThemes":{
 			"lightning": "/lightning/setup/CommunityThemeDefinitionList/home",
-			"classic": "/_ui/sites/setup/ui/CommunityThemeDefinitionFilterListPage?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DNetworks&setupid=CommunityThemeDefinitionList"
+			"classic": "/_ui/sites/setup/ui/CommunityThemeDefinitionFilterListPage?retURL=%2Fui%2Fsetup%2FSetup%3Fsetupid%3DNetworks&setupid = CommunityThemeDefinitionList"
 		},
 		"setup.emailDeliverability": {
 			"lightning":"/lightning/setup/OrgEmailSettings/home",
@@ -1878,7 +1874,7 @@ export const forceNavigator = {
 		},
 		"setup.territoryModels": {
 			"lightning":"/lightning/setup/Territory2Models/home",
-			"classic":"/ui/setup/territory2/Territory2ModelListPage?setupid=Territory2Models"
+			"classic":"/ui/setup/territory2/Territory2ModelListPage?setupid = Territory2Models"
 		},
 		"report.runReport": {
 			"lightning":"/lightning/o/Report/home",
@@ -1893,11 +1889,11 @@ export const forceNavigator = {
 
 export const sfObjectsGetData = {
 	"fieldsAndRelationships": {
-		"getDataRequest" : (apiname) => `/query/?q=SELECT DurableId, QualifiedApiName, Label, DataType, ValueTypeId FROM FieldDefinition WHERE EntityDefinition.QualifiedApiName = '${apiname}'`,
+		"getDataRequest" : (apiname) => `/query/?q = SELECT DurableId, QualifiedApiName, Label, DataType, ValueTypeId FROM FieldDefinition WHERE EntityDefinition.QualifiedApiName = '${apiname}'`,
 		"processResponse" : (apiname,label,response) => {
 			let objCommands ={}
 			response.records.forEach(f=>{
-				const fieldId=f.DurableId.split(".")[1]
+				const fieldId = f.DurableId.split(".")[1]
 				const key = "3rdlevel." + f.QualifiedApiName
 				objCommands[key] = {
 					"key": key,
@@ -1907,7 +1903,7 @@ export const sfObjectsGetData = {
 				}
 				objCommands[key+ ".fieldLevelSecurity"] = {
 					"key": key + ".fieldLevelSecurity",
-					"url": `/lightning/setup/ObjectManager/${apiname}/FieldsAndRelationships/${fieldId}/edit?standardEdit=true`,
+					"url": `/lightning/setup/ObjectManager/${apiname}/FieldsAndRelationships/${fieldId}/edit?standardEdit = true`,
 					"label": label + " >> " + f.QualifiedApiName + " >> Field Level Security",
 					"sortValue" : 0.1  // Will cuase it to appear low on the sort
 				}
@@ -1916,11 +1912,11 @@ export const sfObjectsGetData = {
 		}
 	},
 	"triggers": {
-		"getDataRequest" : (apiname) => `/query/?q=SELECT id,Name FROM ApexTrigger where TableEnumOrId='${apiname}'`,
+		"getDataRequest" : (apiname) => `/query/?q = SELECT id,Name FROM ApexTrigger where TableEnumOrId='${apiname}'`,
 		"processResponse" : (apiname,label,response) => {
 			let objCommands ={}
 			response.records.forEach(f=>{
-				const fieldId=f.Id
+				const fieldId = f.Id
 				const key = "3rdlevel." + f.Name
 				objCommands[key] = {
 					"key": key,
@@ -1933,7 +1929,7 @@ export const sfObjectsGetData = {
 	},
 	"list":{
 		//For "List Object", will load all Listviews defined. for example "List Cases >> Open Cases", "List Cases >> Closed Cases"
-		"getDataRequest" : (apiname) => `/query/?q=SELECT Id, Name, DeveloperName, SobjectType FROM ListView Where SobjectType='${apiname}'`,
+		"getDataRequest" : (apiname) => `/query/?q = SELECT Id, Name, DeveloperName, SobjectType FROM ListView Where SobjectType='${apiname}'`,
 		"processResponse" : (apiname,label,response) => {
 			let objCommands ={}
 			response.records.forEach(f=>{
@@ -1947,7 +1943,7 @@ export const sfObjectsGetData = {
 		}
 	},
 	"pageLayouts":{
-		"getDataRequest" : (apiname) => `/tooling/query?q=SELECT+Id,Name+FROM+Layout WHERE TableEnumOrId='${apiname}'`,
+		"getDataRequest" : (apiname) => `/tooling/query?q = SELECT+Id,Name+FROM+Layout WHERE TableEnumOrId='${apiname}'`,
 		"processResponse" : (apiname,label,response) => {
 			let objCommands ={}
 			response.records.forEach(f=>{
@@ -1961,7 +1957,7 @@ export const sfObjectsGetData = {
 		}
 	},
 	"validationRules":{
-		"getDataRequest" : (apiname) => `/tooling/query?q=SELECT Id, ValidationName FROM ValidationRule where EntityDefinition.DeveloperName = '${apiname}'`,
+		"getDataRequest" : (apiname) => `/tooling/query?q = SELECT Id, ValidationName FROM ValidationRule where EntityDefinition.DeveloperName = '${apiname}'`,
 		"processResponse" : (apiname,label,response) => {
 			let objCommands ={}
 			response.records.forEach(f=>{
@@ -1975,7 +1971,7 @@ export const sfObjectsGetData = {
 		}
 	},
 	"users":{
-		"getDataRequest" : (apiname) => `/query/?q=select id,name from user`,
+		"getDataRequest" : (apiname) => `/query/?q = select id,name from user`,
 		"processResponse" : (apiname,label,response) => {
 			let objCommands ={}
 			response.records.forEach(f=>{
@@ -1991,7 +1987,7 @@ export const sfObjectsGetData = {
 		}
 	},
 	"permissionSets":{
-		"getDataRequest" : (apiname) => `/query/?q=select type,id,label from PermissionSet where type in ('Regular','Standard','Session','')`,
+		"getDataRequest" : (apiname) => `/query/?q = select type,id,label from PermissionSet where type in ('Regular','Standard','Session','')`,
 		"processResponse" : (apiname,label,response) => {
 			let objCommands ={}
 			response.records.forEach(f=>{
@@ -2012,7 +2008,7 @@ export const sfObjectsGetData = {
 		}
 	},
 	"permissionSetGroups":{
-		"getDataRequest" : (apiname) => `/query/?q=select id,MasterLabel from PermissionSetGroup`,
+		"getDataRequest" : (apiname) => `/query/?q = select id,MasterLabel from PermissionSetGroup`,
 		"processResponse" : (apiname,label,response) => {
 			let objCommands ={}
 			response.records.forEach(f=>{
@@ -2033,7 +2029,7 @@ export const sfObjectsGetData = {
 		}
 	},
 	"runReport":{
-		"getDataRequest" : (apiname) => `/query/?q=select Id, Name from report where IsDeleted=false`,
+		"getDataRequest" : (apiname) => `/query/?q = select Id, Name from report where IsDeleted = false`,
 		"processResponse" : (apiname,label,response) => {
 			let objCommands ={}
 			response.records.forEach(f=>{
@@ -2052,7 +2048,7 @@ export const sfObjectsGetData = {
 		}
 	},
 	"editReport":{
-		"getDataRequest" : (apiname) => `/query/?q=select Id, Name from report where IsDeleted=false`,
+		"getDataRequest" : (apiname) => `/query/?q = select Id, Name from report where IsDeleted = false`,
 		"processResponse" : (apiname,label,response) => {
 			let objCommands ={}
 			response.records.forEach(f=>{
@@ -2071,7 +2067,7 @@ export const sfObjectsGetData = {
 		}
 	},
 	"profiles":{
-		"getDataRequest" : (apiname) => `/query/?q=Select Id, Name From Profile`,
+		"getDataRequest" : (apiname) => `/query/?q = Select Id, Name From Profile`,
 		"processResponse" : (apiname,label,response) => {
 			let objCommands ={}
 			response.records.forEach(f=>{
@@ -2086,7 +2082,7 @@ export const sfObjectsGetData = {
 		}
 	},
 	"apexClasses":{
-		"getDataRequest" : (apiname) => `/query/?q=Select Id, Name From ApexClass`,
+		"getDataRequest" : (apiname) => `/query/?q = Select Id, Name From ApexClass`,
 		"processResponse" : (apiname,label,response) => {
 			let objCommands ={}
 			response.records.forEach(f=>{

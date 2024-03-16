@@ -138,7 +138,7 @@ const getMoreData = (sourceCommand,options,sendResponse)=>{
 	let label = sourceCommand.label
 	let key = sourceCommand.key
 
-	console.debug("getmoredata>key = " + key +", Label = " + label + ",apiname = " +apiname)
+	// console.debug("getmoredata>key = " + key +", Label = " + label + ",apiname = " +apiname)
 
 	//last element in the key indicates what to load
 	let commandArray = key.split('.')
@@ -235,7 +235,7 @@ chrome.commands.onCommand.addListener((command)=>{
 })
 chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
 	var apiUrl = request.serverUrl?.replace('lightning.force.com','my.salesforce.com')
-	console.info("OnMessage : " + request.action + (apiUrl ? (" : " + apiUrl) : "" ) )
+	console.debug("OnMessage : " + request.action + (apiUrl ? (" : " + apiUrl) : "" ) )
 	switch(request.action) {
 		case "goToUrl":
 			goToUrl(request.url, request.newTab, request.settings)
@@ -316,7 +316,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse)=>{
 			forceNavigator.getHTTP("https://" + request.apiUrl + '/services/data/' + forceNavigator.apiVersion + '/query/?q=' + q , "json",
 				{"Authorization": "Bearer " + request.sessionId, "Accept": "application/json"})
 				.then(response => {
-					console.log("resposne",response)
 					response.records.forEach(f=>{
 						const nameField = f.QualifiedApiName
 						const apiName = f.EntityDefinition.QualifiedApiName

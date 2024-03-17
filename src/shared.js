@@ -70,7 +70,7 @@ export const ui = {
 		document.getElementById("sfnavQuickSearch").value = e.target.firstChild.nodeValue
 		forceNavigator.listPosition = -1
 		ui.setVisibleSearch("hidden")
-		if(e.target.dataset.key)
+		if(e.target.dataset.key & (!window.ctrlKey))
 			forceNavigator.invokeCommand(e.target.dataset, window.ctrlKey,'click')
 		else
 			ui.hideSearchBox()
@@ -470,8 +470,8 @@ console.log(cmdKey)
 		if (tabPressed) {
 			ui.getMoreData(tabPressed = true)
 		} else {
-			// don't get more
-			// ui.debounceTypingTimer = setTimeout(ui.getMoreData, 1000)
+			//get more
+			ui.debounceTypingTimer = setTimeout(ui.getMoreData, 1000)
 		}
 	},
 	"getMoreData":(tabPressed = false)=>{
@@ -1889,7 +1889,7 @@ export const forceNavigator = {
 
 export const sfObjectsGetData = {
 	"fieldsAndRelationships": {
-		"getDataRequest" : (apiname) => `/query/?q = SELECT DurableId, QualifiedApiName, Label, DataType, ValueTypeId FROM FieldDefinition WHERE EntityDefinition.QualifiedApiName = '${apiname}'`,
+		"getDataRequest" : (apiname) => `/query/?q=SELECT DurableId, QualifiedApiName, Label, DataType, ValueTypeId FROM FieldDefinition WHERE EntityDefinition.QualifiedApiName = '${apiname}'`,
 		"processResponse" : (apiname,label,response) => {
 			let objCommands ={}
 			response.records.forEach(f=>{
@@ -1912,7 +1912,7 @@ export const sfObjectsGetData = {
 		}
 	},
 	"triggers": {
-		"getDataRequest" : (apiname) => `/query/?q = SELECT id,Name FROM ApexTrigger where TableEnumOrId='${apiname}'`,
+		"getDataRequest" : (apiname) => `/query/?q=SELECT id,Name FROM ApexTrigger where TableEnumOrId='${apiname}'`,
 		"processResponse" : (apiname,label,response) => {
 			let objCommands ={}
 			response.records.forEach(f=>{
@@ -1929,7 +1929,7 @@ export const sfObjectsGetData = {
 	},
 	"list":{
 		//For "List Object", will load all Listviews defined. for example "List Cases >> Open Cases", "List Cases >> Closed Cases"
-		"getDataRequest" : (apiname) => `/query/?q = SELECT Id, Name, DeveloperName, SobjectType FROM ListView Where SobjectType='${apiname}'`,
+		"getDataRequest" : (apiname) => `/query/?q=SELECT Id, Name, DeveloperName, SobjectType FROM ListView Where SobjectType='${apiname}'`,
 		"processResponse" : (apiname,label,response) => {
 			let objCommands ={}
 			response.records.forEach(f=>{
@@ -1943,7 +1943,7 @@ export const sfObjectsGetData = {
 		}
 	},
 	"pageLayouts":{
-		"getDataRequest" : (apiname) => `/tooling/query?q = SELECT+Id,Name+FROM+Layout WHERE TableEnumOrId='${apiname}'`,
+		"getDataRequest" : (apiname) => `/tooling/query?q=SELECT+Id,Name+FROM+Layout WHERE TableEnumOrId='${apiname}'`,
 		"processResponse" : (apiname,label,response) => {
 			let objCommands ={}
 			response.records.forEach(f=>{
@@ -1957,7 +1957,7 @@ export const sfObjectsGetData = {
 		}
 	},
 	"validationRules":{
-		"getDataRequest" : (apiname) => `/tooling/query?q = SELECT Id, ValidationName FROM ValidationRule where EntityDefinition.DeveloperName = '${apiname}'`,
+		"getDataRequest" : (apiname) => `/tooling/query?q=SELECT Id, ValidationName FROM ValidationRule where EntityDefinition.DeveloperName = '${apiname}'`,
 		"processResponse" : (apiname,label,response) => {
 			let objCommands ={}
 			response.records.forEach(f=>{
@@ -1971,7 +1971,7 @@ export const sfObjectsGetData = {
 		}
 	},
 	"users":{
-		"getDataRequest" : (apiname) => `/query/?q = select id,name from user`,
+		"getDataRequest" : (apiname) => `/query/?q=select id,name from user`,
 		"processResponse" : (apiname,label,response) => {
 			let objCommands ={}
 			response.records.forEach(f=>{
@@ -1987,7 +1987,7 @@ export const sfObjectsGetData = {
 		}
 	},
 	"permissionSets":{
-		"getDataRequest" : (apiname) => `/query/?q = select type,id,label from PermissionSet where type in ('Regular','Standard','Session','')`,
+		"getDataRequest" : (apiname) => `/query/?q=select type,id,label from PermissionSet where type in ('Regular','Standard','Session','')`,
 		"processResponse" : (apiname,label,response) => {
 			let objCommands ={}
 			response.records.forEach(f=>{
@@ -2008,7 +2008,7 @@ export const sfObjectsGetData = {
 		}
 	},
 	"permissionSetGroups":{
-		"getDataRequest" : (apiname) => `/query/?q = select id,MasterLabel from PermissionSetGroup`,
+		"getDataRequest" : (apiname) => `/query/?q=select id,MasterLabel from PermissionSetGroup`,
 		"processResponse" : (apiname,label,response) => {
 			let objCommands ={}
 			response.records.forEach(f=>{
@@ -2029,7 +2029,7 @@ export const sfObjectsGetData = {
 		}
 	},
 	"runReport":{
-		"getDataRequest" : (apiname) => `/query/?q = select Id, Name from report where IsDeleted = false`,
+		"getDataRequest" : (apiname) => `/query/?q=select Id, Name from report where IsDeleted = false`,
 		"processResponse" : (apiname,label,response) => {
 			let objCommands ={}
 			response.records.forEach(f=>{
@@ -2048,7 +2048,7 @@ export const sfObjectsGetData = {
 		}
 	},
 	"editReport":{
-		"getDataRequest" : (apiname) => `/query/?q = select Id, Name from report where IsDeleted = false`,
+		"getDataRequest" : (apiname) => `/query/?q=select Id, Name from report where IsDeleted = false`,
 		"processResponse" : (apiname,label,response) => {
 			let objCommands ={}
 			response.records.forEach(f=>{
@@ -2067,7 +2067,7 @@ export const sfObjectsGetData = {
 		}
 	},
 	"profiles":{
-		"getDataRequest" : (apiname) => `/query/?q = Select Id, Name From Profile`,
+		"getDataRequest" : (apiname) => `/query/?q=Select Id, Name From Profile`,
 		"processResponse" : (apiname,label,response) => {
 			let objCommands ={}
 			response.records.forEach(f=>{
@@ -2082,7 +2082,7 @@ export const sfObjectsGetData = {
 		}
 	},
 	"apexClasses":{
-		"getDataRequest" : (apiname) => `/query/?q = Select Id, Name From ApexClass`,
+		"getDataRequest" : (apiname) => `/query/?q=Select Id, Name From ApexClass`,
 		"processResponse" : (apiname,label,response) => {
 			let objCommands ={}
 			response.records.forEach(f=>{

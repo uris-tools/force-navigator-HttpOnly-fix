@@ -134,7 +134,6 @@ const getMoreData = (sourceCommand,options,sendResponse)=>{
 		if (typeof sfObjectsGetData[infoToGet] != "undefined") {
 			url = baseurl + sfObjectsGetData[infoToGet].getDataRequest(apiname)
 		} else {
-			console.error("field "+infoToGet+" not clear to me")
 			sendResponse({ "info": "can't expand field " + infoToGet})
 			return
 		}

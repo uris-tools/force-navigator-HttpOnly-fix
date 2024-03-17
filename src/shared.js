@@ -70,7 +70,7 @@ export const ui = {
 		document.getElementById("sfnavQuickSearch").value = e.target.firstChild.nodeValue
 		forceNavigator.listPosition = -1
 		ui.setVisibleSearch("hidden")
-		if(e.target.dataset.key)
+		if(e.target.dataset.key & (!window.ctrlKey))
 			forceNavigator.invokeCommand(e.target.dataset, window.ctrlKey,'click')
 		else
 			ui.hideSearchBox()

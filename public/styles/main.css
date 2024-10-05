@@ -1,7 +1,7 @@
 .theme-default {
 	--boxBorderColor: #1589ee;
 	--boxShadow: rgba(0, 0, 0, 0.25);
-	--boxGlow: #0070D2;
+	--boxGlow: #0070d2;
 	--boxBackgroundColor: white;
 	--itemColor: #000;
 	--itemColorHover: #000;
@@ -9,48 +9,48 @@
 	--iconFilter: invert(0%);
 }
 .theme-unicorn {
-	--boxBorderColor: #F85CA5;
-	--boxShadow: #FFBCCDaa;
-	--boxGlow: #FEEB8Faa;
+	--boxBorderColor: #f85ca5;
+	--boxShadow: #ffbccdaa;
+	--boxGlow: #feeb8faa;
 	--boxBackgroundColor: #fff;
 	--itemColor: turquoise;
 	--itemColorHover: hotpink;
-	--itemBackground: #B7EAF388;
+	--itemBackground: #b7eaf388;
 	--iconFilter: hue-rotate(185deg) brightness(1.5);
 }
 .theme-dark {
-	--boxBorderColor: #E1E5EB;
-	--boxShadow: #383D4655;
-	--boxGlow: #0070D2;
+	--boxBorderColor: #e1e5eb;
+	--boxShadow: #383d4655;
+	--boxGlow: #0070d2;
 	--boxBackgroundColor: #212121;
-	--itemColor: #8BA8E2;
-	--itemColorHover: #8BA8E2;
+	--itemColor: #8ba8e2;
+	--itemColorHover: #8ba8e2;
 	--itemBackground: #0f0f0f;
 	--iconFilter: invert(100%) hue-rotate(185deg) brightness(1.5);
 }
 .theme-solarized {
-	--boxBorderColor: #0E2B36;
-	--boxShadow: #A5782755;
-	--boxGlow: #5697D3;
-	--boxBackgroundColor: #FBF6E3;
-	--itemColor: #A57827;
-	--itemColorHover: #59A39B;
+	--boxBorderColor: #0e2b36;
+	--boxShadow: #a5782755;
+	--boxGlow: #5697d3;
+	--boxBackgroundColor: #fbf6e3;
+	--itemColor: #a57827;
+	--itemColorHover: #59a39b;
 	--itemBackground: #173642;
-	--iconFilter: hue-rotate(240deg);	
+	--iconFilter: hue-rotate(240deg);
 }
 
 #sfnavSearchBox {
 	opacity: 0;
 	transition-property: opacity;
-	transition-duration: .2s;
-	overflow:hidden;
+	transition-duration: 0.2s;
+	overflow: hidden;
 	z-index: -1;
-	background-color:#1797c0;
-	top:20%;
-	left:20%;
-	position:fixed;
-	padding:9px;
-	width:50%;
+	background-color: #1797c0;
+	top: 20%;
+	left: 20%;
+	position: fixed;
+	padding: 9px;
+	width: 50%;
 	border: 1px solid var(--boxBorderColor);
 	border-radius: 4px;
 	box-shadow: 0 0 3px var(--boxGlow), var(--boxShadow) 0px 6px 20px 0px;
@@ -59,24 +59,24 @@
 }
 #sfnavSearchBox .sfnav_wrapper {
 	background: var(--boxBackgroundColor);
-	position:relative;
+	position: relative;
 	height: 48px;
 	display: flex;
 }
 #sfnavSearchBox .sfnavOutput {
-	max-height:640px;
-	overflow:auto;
+	max-height: 640px;
+	overflow: auto;
 }
 .sfnav_shadow {
-	max-height:100%;
-	overflow:auto;
+	max-height: 100%;
+	overflow: auto;
 }
 .sfnav_child:hover {
 	color: var(--itemColorHover);
 }
 .sfnav_child {
-	display:block;
-	color:var(--itemColor);
+	display: block;
+	color: var(--itemColor);
 	font-size: 16px;
 	text-decoration: none;
 }
@@ -90,21 +90,21 @@
 	position: relative;
 	flex: 1;
 	display: inline-block;
-	width:90%;
+	width: 90%;
 	outline: none;
-	background-color:var(--boxBackgroundColor);
-	border:none;
-	color:var(--itemColor);
-	font-size:24px;
+	background-color: var(--boxBackgroundColor);
+	border: none;
+	color: var(--itemColor);
+	font-size: 24px;
 }
 .sfnav_selected {
-	background-color:var(--itemBackground);
-	color:var(--itemColorHover);
+	background-color: var(--itemBackground);
+	color: var(--itemColorHover);
 }
 #sfnav_logo {
-	filter:  var(--iconFilter);
-	width:48px;
-	height:48px;
+	filter: var(--iconFilter);
+	width: 48px;
+	height: 48px;
 	display: inline-block;
 }
 #sfnavLoader {
@@ -116,6 +116,6 @@
 	margin-bottom: auto;
 }
 .forceStyle .allow-horizontal-form .form-horizontal .inlineEditUndo {
-    margin-bottom: -3em;
+	margin-bottom: -3em;
 	left: -1em;
 }

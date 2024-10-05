@@ -1,0 +1,70 @@
+{
+	"name": "Salesforce Commander",
+	"version": "0.9.0",
+	"manifest_version": 3,
+	"description": "Get more done in Salesforce - Quickly access any page using your keyboard!",
+	"action": {
+		"default_icon": "images/sf-commander32.png",
+		"default_popup": "popup.html",
+		"default_title": "Salesforce Commander"
+	},
+	"icons": {
+		"16": "images/sf-commander16.png",
+		"32": "images/sf-commander32.png",
+		"48": "images/sf-commander48.png",
+		"128": "images/sf-commander128.png"
+	},
+	"web_accessible_resources": [
+		{
+			"resources": ["images/*"],
+			"matches": ["*://*/*"]
+		}
+	],
+	"background": {
+		"scripts": ["serviceWorker.js"],
+		"type": "module"
+	},
+	"content_scripts": [
+		{
+			"css": ["styles/main.css"],
+			"matches": ["https://*.force.com/*", "https://*.salesforce.com/*", "https://*.salesforce-setup.com/*", "https://*.cloudforce.com/*"],
+			"all_frames": true,
+			"js": ["contentScript.js", "shared.js", "popup.js"],
+			"run_at": "document_end"
+		}
+	],
+	"commands": {
+		"goToTasks": {
+			"description": "Go directly to Tasks",
+			"suggested_key": {
+				"default": "Ctrl+Shift+1"
+			}
+		},
+		"goToReports": {
+			"description": "Go directly to Reports",
+			"suggested_key": {
+				"default": "Ctrl+Shift+2"
+			}
+		},
+		"showSearchBox": {
+			"description": "Open Search Box",
+			"suggested_key": {
+				"default": "Ctrl+Shift+Space"
+			}
+		},
+		"alternativeShowSearchBox": {
+			"description": "Open Search Box (Alternative shortcut)",
+			"suggested_key": {
+				"default": "Ctrl+Space"
+			}
+		},
+		"showAppMenu": {
+			"description": "Open Lightning App Menu",
+			"suggested_key": {
+				"default": "Ctrl+Shift+A"
+			}
+		}
+	},
+	"permissions": ["activeTab", "management", "storage", "clipboardRead", "cookies", "scripting"],
+	"host_permissions": ["https://*.force.com/*", "https://*.salesforce.com/*", "https://*.cloudforce.com/*"]
+}

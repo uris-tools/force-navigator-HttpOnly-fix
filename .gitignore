@@ -4,39 +4,5 @@
 /node_modules
 # production
 /build
-# misc
-/original
-.DS_Store
-npm-debug.log*
-# Logs
-logs
-*.log
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
 package-lock.json
-node_modules
-dist
-dist-ssr
-*.local
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-temp
-.tmp
-.sass-cache
-app/bower_components
-test/bower_components
-package
-*.zip
-store-details/csp.png
-store-details/settings.png
-store-details/demo1.png
-.history
+/.history

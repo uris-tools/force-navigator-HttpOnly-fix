@@ -1,13 +1,25 @@
-# Salesforce Navigator for Lightning
-**[Available on Chrome Web Store now](https://chrome.google.com/webstore/detail/salesforce-navigator-for/pbjjdhghffpemcglcadejmkcpnpmlklh)**
 
-## Now supports Lightning
+# Salesforce Commander
+**[Available on Chrome Web Store now](TBD)**
 
-Get more done in Salesforce - list and search records, make new ones, create a task or login as on the fly!
+
+Get more done in Salesforce - list and search records, make new ones, find faster  or login as on the fly!
 This extension helps you get to any Salesforce page quickly. Just type in what you need to do!
-Compatible with Lightning and Classic
 
-Open the Navigator and
+Compatible with Firefox and Chrome
+
+![Animated Demo](web/demo1.gif)
+
+Open the Commander and
+- Press <kbd>Ctrl</kbd>-<kbd>Space</kbd> to open the Commander bar
+- Enter "List [Object]<kbd>Enter</kbd>" to get to the object list. 
+- Enter "List [Object]<kbd>Enter</kbd>"<kbd>Tab</kbd> to see the the available listviews for this object, and choose one. 
+- Enter "Setup [Object] fields<kbd>Tab</kbd>" to see the list of fields, and choose one using arrow keys+<kbd>Enter</kbd> or mouse.
+- Enter "Users<kbd>Tab</kbd>[partial name]"
+- Direct access to subpages for different objects like:
+    - Access user pages directly by typing "users [partial name]"
+    use- Access custom object fields directly "[object name] fields <kbd>Tab</kbd> [field name]". For Example "account fields Tab name"
+
 - [New Permission] Can now save some settings, like theme and profile setup toggle, needs Storage permission to save preferences
 - [New Feature] Themes! Right now has Default, Dark, Unicorn, and Solarized, open to suggestions
 - [New Feature] Toggle all checkboxes on the page for when subtracting from a selection is faster
@@ -31,31 +43,24 @@ Call the Classic Account Merge from either interface using the Account you are o
 
 Default shortcut keys
 (use Command instead of Control on Mac, and/or customize your options at chrome://extensions/shortcuts)
-- Control + Shift + Space: Navigator Bar
+- Control + Space: Navigator Bar
 - Control + Shift + A: Lightning App Menu
 - Control + Shift + 1: Tasks
 - Control + Shift + 2: Reports
+
+Customize shortcuts at:
+- Chrome - chrome://extensions/shortcuts
+- Firefox - about://addons --> Manage Extension shortcuts
+
 
 NOTE: If you have a custom instance Domain Name, you may have to create a CSP Trusted Site Definition for your Classic domain URL in order for this extension to work - more info here https://developer.salesforce.com/docs/atlas.en-us.lightning.meta/lightning/csp_trusted_sites.htm
 
 Contribute to this extension at https://github.com/dannysummerlin/force-navigator
 
-UPDATE NOTES
-########################################
-7/5 - Pride Month never ends, go learn about Marsha P Johnson - fixed my fixing, Lightning URLs properly replace Classic links better now, still more to be done on this though
-5/28 - Watch https://youtube.com/c/FDSignifire - Several fixes, added checkbox toggle, removed unused permission
-
-9/11 - #justiceforbreonnataylor (182 days and counting) - Added the ability to call the Classic Account merge tool from an Account page. Be sure to have the ID of the Account you want to merge in your clipboard; added Lightning Record Page shortcut for custom objects
-
-8/29 - Rest in Power Chadwick Boseman. Thanks to CKloppel for pointing out missing API and click handling, now updated to v49 and new-tab clicks work again
-
-6/19 - Happy Juneteenth! Thanks to kacrouse for Custom Metadata Lightning handling, also updating several changed URLs across the platform
-
-
 Maintainer(s):
-[Danny Summerlin](http://summerlin.co)
+[Uri Eyal RBD LINK](http://XXX)
 open to others!
-_based on Salesforce Navigator by [Daniel Nakov](https://twitter.com/dnak0v) and [Wes Weingartner](https://twitter.com/wes1278)_
+_based on force-navigator by [Danny Summerlin](http://summerlin.co) ,  Salesforce Navigator by [Daniel Nakov](https://twitter.com/dnak0v), and [Wes Weingartner](https://twitter.com/wes1278)_
 
 ## License
 [MIT License](http://en.wikipedia.org/wiki/MIT_License)

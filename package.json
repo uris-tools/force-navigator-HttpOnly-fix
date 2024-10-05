@@ -1,12 +1,15 @@
 {
-  "name": "force-navigator",
-  "version": "4.1.2",
-  "description": "Lightning Navigator",
+  "name": "salesforce-commander",
+  "version": "0.9.0",
+  "description": "Command line interface for Salesforce",
   "private": true,
   "scripts": {
-    "watch": "webpack --mode=development --watch --config config/webpack.config.js",
-    "build": "webpack --mode=production --config config/webpack.config.js",
-    "format": "prettier --write --ignore-unknown \"{config,public,src}/**/*.{html,css,js,ts,json}\""
+    "watch": "webpack --mode=development --watch --config config/webpack.config.js --env BROWSER=FIREFOX",
+    "watch_chrome": "webpack --mode=development --watch --config config/webpack.config.js --env BROWSER=CHROME",
+    "build": "webpack --mode=development --config config/webpack.config.js --env BROWSER=FIREFOX",
+    "build_firefox": "webpack --mode=production --config config/webpack.config.js --env BROWSER=FIREFOX",
+    "build_chrome": "webpack --mode=production --config config/webpack.config.js --env BROWSER=CHROME",
+    "format": "prettier --write --end-of-line lf --ignore-unknown --print-width 180 \"{config,public,src}/**/*.{html,css,js,ts,json}\""
   },
   "devDependencies": {
     "copy-webpack-plugin": "^10.2.4",

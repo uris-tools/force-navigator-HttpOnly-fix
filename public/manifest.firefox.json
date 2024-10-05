@@ -65,6 +65,6 @@
 			}
 		}
 	},
-	"permissions": ["activeTab", "management", "storage", "clipboardRead", "cookies", "scripting"],
+	"permissions": ["management", "storage", "clipboardRead", "cookies", "scripting"],
 	"host_permissions": ["https://*.force.com/*", "https://*.salesforce.com/*", "https://*.cloudforce.com/*"]
 }

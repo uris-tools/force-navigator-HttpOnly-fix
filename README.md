@@ -1,19 +1,22 @@
-
 # Salesforce Commander
-
-
 
 Get more done in Salesforce - list and search records, make new ones, find faster  or login as on the fly!
 This extension helps you get to any Salesforce page quickly. Just type in what you need to do!
+
+For example, 
+- Instead of Navigating to Object Manager -> Accounts -> Triggers --> "myAccountTrigger",   Enter "Account Triggers <TAB> myAcc" and access that trigger directly.
+  
+- Instead of Navigating to Setup -> Users -> Permission Sets -> My Permission set,  Enter "Permis Set <TAB> my" and access it directly.
+  
+
 
 Compatible with Firefox and Chrome
 
 ![Animated Demo](web/demo1.gif)
 
-Open the Commander and
-- Press <kbd>Ctrl</kbd>-<kbd>Shift</kbd>-<kbd>Space</kbd> to open the Commander bar
+Press <kbd>Ctrl</kbd>-<kbd>Shift</kbd>-<kbd>Space</kbd> to open the Commander bar and:
 - Enter "List [Object] <kbd>Enter</kbd>" to get to the object list. 
-- Enter "List [Object] <kbd>Enter</kbd>"<kbd>Tab</kbd> to see the the available listviews for this object, and choose one. 
+- Enter "List [Object] <kbd>Tab</kbd>" to see the the available listviews for this object, and choose one. 
 - Enter "Setup [Object] fields<kbd>Tab</kbd>" to see the list of fields, and choose one using arrow keys+<kbd>Enter</kbd> or mouse.
 - Enter "Users <kbd>Tab</kbd> [partial name]"
   - Press "Users <kbd>Tab</kbd>" to show all defined users and access their details directly.  
@@ -21,17 +24,22 @@ Open the Commander and
     - Access user pages directly by typing "users [partial name]"
     use- Access custom object fields directly "[object name] fields <kbd>Tab</kbd> [field name]". For Example "account fields Tab name"
 
+#### More Examples :
+* Account Fields
+* Case Triggers
+* Customer Validation Rules
+* Permission Sets
+* Permission set Groups
+* List Profiles
+* Asset Page layouts
+* Home
+* Setup 
+* Run Report [report name]
+* Login as [partial match of username]
+#### Searching
+To search for a specific object, open the Commander bar and enter "? Object Value".   For example, "? Account Sony" or "?Contact John".
 
-- Add tasks on the fly by typing "! [your task]"
-- Search all records with "? [search terms]"
-- Go to your Home page with "Home"
-- Object List views with "List [Object]"
-- Create a new record with "New [Object]"
-- Go directly a Setup page by typing it's name
-- Access Object customizations with "[Object]  [Section]>" (e.g. "Contact Fields")
-  - Press <kbd>Tab</kbd> after the section, to get a list of items.   For example "Contact Fields <kbd>Tab</kbd>" will show all Contact fields for direct access.
-- Commands looking weird? Run "Refresh Metadata" to make sure you have what you need
-- Login as another user with "Login as [partial match of username]"
+ 
 
 ** You can hold shift or control when you press enter or click your mouse to open the selected item in a new tab **
 
@@ -55,8 +63,9 @@ Contribute to this extension at https://github.com/uris-tools/Salesforce-Command
 
 ## Maintainer(s):
 [Uri Eyal](uri@eyal.es)
-open to others!
-_based on force-navigator by [Danny Summerlin](http://summerlin.co) ,  Salesforce Navigator by [Daniel Nakov](https://twitter.com/dnak0v), and [Wes Weingartner](https://twitter.com/wes1278)_
+
+##### Based on force-navigator by [Danny Summerlin](http://summerlin.co) ,  Salesforce Navigator by [Daniel Nakov](https://twitter.com/dnak0v), and [Wes Weingartner](https://twitter.com/wes1278)
+
 
 ## License
 [MIT License](http://en.wikipedia.org/wiki/MIT_License)

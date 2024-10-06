@@ -66,5 +66,11 @@
 		}
 	},
 	"permissions": ["management", "storage", "clipboardRead", "cookies", "scripting"],
-	"host_permissions": ["https://*.force.com/*", "https://*.salesforce.com/*", "https://*.cloudforce.com/*"]
+	"host_permissions": ["https://*.force.com/*", "https://*.salesforce.com/*", "https://*.cloudforce.com/*"],
+	"browser_specific_settings": {
+		"gecko": {
+			"id": "SalesforceCommander@addon.org"
+		}
+	}
+
 }

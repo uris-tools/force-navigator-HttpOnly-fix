@@ -45,11 +45,11 @@ To search for a specific object, open the Commander bar and enter "? Object Valu
 
 ### Default shortcut keys
 
-(use Command instead of Control on Mac)
-- Control + Shift + Space: Navigator Bar
-- Control + Shift + A: Lightning App Menu
-- Control + Shift + 1: Tasks
-- Control + Shift + 2: Reports
+Default shortcut key is <kbd>Ctrl</kbd>-<kbd>Shift</kbd>-<kbd>Space</kbd> to open the command bar.
+(or <kbd>Command</kbd>-<kbd>Shift</kbd>-<kbd>Space</kbd> on Mac)
+
+Alternativly:  <kbd>Ctrl</kbd>-<kbd>Space</kbd>
+
 
 
 ### Customize shortcuts at:

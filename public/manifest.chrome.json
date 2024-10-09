@@ -34,18 +34,6 @@
 		}
 	],
 	"commands": {
-		"goToTasks": {
-			"description": "Go directly to Tasks",
-			"suggested_key": {
-				"default": "Ctrl+Shift+1"
-			}
-		},
-		"goToReports": {
-			"description": "Go directly to Reports",
-			"suggested_key": {
-				"default": "Ctrl+Shift+2"
-			}
-		},
 		"showSearchBox": {
 			"description": "Open Search Box",
 			"suggested_key": {
@@ -56,12 +44,6 @@
 			"description": "Open Search Box (Alternative shortcut)",
 			"suggested_key": {
 				"default": "Ctrl+Space"
-			}
-		},
-		"showAppMenu": {
-			"description": "Open Lightning App Menu",
-			"suggested_key": {
-				"default": "Ctrl+Shift+A"
 			}
 		}
 	},

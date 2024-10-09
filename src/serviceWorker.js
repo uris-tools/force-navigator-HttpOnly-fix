@@ -294,15 +294,6 @@ chrome.commands.onCommand.addListener((command) => {
 		case 'alternativeShowSearchBox':
 			showElement('searchBox');
 			break;
-		case 'showAppMenu':
-			showElement('appMenu');
-			break;
-		case 'goToTasks':
-			goToUrl('.com/00T');
-			break;
-		case 'goToReports':
-			goToUrl('.com/00O');
-			break;
 	}
 });
 

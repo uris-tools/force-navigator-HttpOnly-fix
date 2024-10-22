@@ -3,6 +3,8 @@
 Get more done in Salesforce - list and search records, make new ones, find faster  or login as on the fly!
 This extension helps you get to any Salesforce page quickly. Just type in what you need to do!
 
+This extension is based on the amazing force-navigator by [Danny Summerlin](http://summerlin.co), with adaptations to make it more adapted to "my" way of working:  Faster access to different elements, Using on-demand Salesforce API calls.
+
 For example, 
 - Instead of Navigating to Object Manager -> Accounts -> Triggers --> "myAccountTrigger",   Enter "Account Triggers <TAB> myAcc" and access that trigger directly.
   

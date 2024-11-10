@@ -202,35 +202,32 @@ export const ui = {
 			const label = sfCommander.commands[key]?.label ?? '';
 			const comboSearch = (key + '|' + label).toLowerCase();
 			if (comboSearch.indexOf(input) != -1) {
-				preSort[key] = sfCommanderSettings.searchLimit;
+				preSort[key] = 0;
 			} else {
 				let match = 0;
 				let sortValue = 0;
+
 				for (let i = 0; i < terms.length; i++) {
 					if (comboSearch.indexOf(terms[i]) != -1) {
 						match++;
-						sortValue = 1;
+						let indexOfExtraDetails = label.indexOf('>>');
+						if (indexOfExtraDetails > 0) {
+							let part1Length = indexOfExtraDetails;
+							let part2Length = label.length - indexOfExtraDetails - 2;
+							sortValue = part1Length + part2Length / Math.pow(10, part2Length.toString().length);
+						} else {
+							sortValue = label.length;
+						}
+					}
+
+					if (match == terms.length) {
+						preSort[key] = sortValue;
 					}
 				}
-				for (let i = 1; i <= terms.length; i++) {
-					if (comboSearch.indexOf(terms.slice(0, i).join(' ')) != -1) sortValue++;
-					//Allow better sort if the user did not enter the ">". for example "Case Fields" should sort the same as "Case > Fields".  Without this, "case fields" would
-					//bring "Setup > Briefcase Assignment > Fields"
-					//TODO : NOT WORKING FOR SOME REASOB
-					else if (comboSearch.indexOf(terms.slice(0, i).join(' > ')) != -1) sortValue++;
-					else break;
-				}
-				if (match == terms.length) preSort[key] = sortValue;
-			}
-			//Take the weights into account when sorting, so less important items will appear lower.
-			//for example first will appear "Account > Fields > ...." and only after all the fields, will appear the "Account > Fields > ... > Field Level Security"
-			const keySortValue = sfCommander.commands[key]?.sortValue ?? 1;
-			if (keySortValue != 1 && preSort[key]) {
-				preSort[key] = preSort[key] * keySortValue;
 			}
 		}
 		return Object.keys(preSort)
-			.sort((a, b) => preSort[b] - preSort[a])
+			.sort((a, b) => preSort[a] - preSort[b])
 			.slice(0, sfCommanderSettings.searchLimit);
 	},
 	// Add one search result to dropdown
@@ -788,7 +785,6 @@ export const sfCommander = {
 
 		let targetUrl = '';
 		if (typeof command != 'object') command = { key: command };
-		console.log('> invoke Command (', command, ',', newTab, ',', event, ')');
 		if (typeof sfCommander.commands[command.key] != 'undefined' && sfCommander.commands[command.key].url) {
 			targetUrl = sfCommander.commands[command.key].url;
 			console.log('point 1. targetUrl: ', targetUrl, ' for command: ', command.key);

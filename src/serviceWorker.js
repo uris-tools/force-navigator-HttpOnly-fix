@@ -276,8 +276,10 @@ const goToUrl = (targetUrl, newTab, settings = {}) => {
 		targetUrl = targetUrl.replace(re, '');
 		let newUrl = targetUrl.match(/.*?\.com(.*)/);
 		newUrl = newUrl ? newUrl[1] : targetUrl;
-		if (!targetUrl.includes('-extension:')) newUrl = tabs[0].url.match(/.*?\.com/)[0] + newUrl;
+		if (targetUrl.startsWith('/')) newUrl = tabs[0].url.match(/.*?\.com/)[0] + newUrl;
 		else newUrl = targetUrl;
+		console.log('gotoUrl result URL:', newUrl, ' targetUrl was ', targetUrl);
+
 		if (newTab)
 			chrome.tabs.create({
 				active: false,
